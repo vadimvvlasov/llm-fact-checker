@@ -29,4 +29,6 @@ python_files = ["test_*.py"]
 [dependency-groups]
 dev = [
     "pytest>=8.4.2",
+    "jupyter>=1.1.1",
+    "pandas>=2.2.0",
 ]
