@@ -6,8 +6,8 @@ https://phabricator.wikimedia.org/T400119).
 """
 
 import dlt
-import requests
 
+from ingest.http import get_json
 from src.config import DATABASE_URL
 
 USER_AGENT = "llm-fact-checker/0.1 (LLM Zoomcamp capstone; https://github.com/vadimvvlasov)"
@@ -48,7 +48,7 @@ WIKI_TOPICS = [
 
 def fetch_wikipedia_article(title: str) -> dict | None:
     """Fetch a single article's plaintext extract via the MediaWiki API."""
-    resp = requests.get(
+    data = get_json(
         "https://en.wikipedia.org/w/api.php",
         headers={"User-Agent": USER_AGENT},
         params={
@@ -60,10 +60,8 @@ def fetch_wikipedia_article(title: str) -> dict | None:
             "titles": title,
             "format": "json",
         },
-        timeout=15,
     )
-    resp.raise_for_status()
-    pages = resp.json().get("query", {}).get("pages", {})
+    pages = data.get("query", {}).get("pages", {})
     for page_id, page in pages.items():
         if page_id == "-1" or "extract" not in page:
             return None

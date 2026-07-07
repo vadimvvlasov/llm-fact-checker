@@ -7,8 +7,8 @@ Docs: https://www.sec.gov/os/webmaster-faq#developers
 from datetime import date
 
 import dlt
-import requests
 
+from ingest.http import get_json
 from src.config import DATABASE_URL
 
 USER_AGENT = "llm-fact-checker vadim.v.vlasov@gmail.com"
@@ -21,12 +21,6 @@ OTHER_TAGS = {
     "NetIncomeLoss": "Net income",
     "Assets": "Total assets",
 }
-
-
-def _get(url: str) -> dict:
-    resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=20)
-    resp.raise_for_status()
-    return resp.json()
 
 
 def resolve_cik(ticker: str, ticker_map: dict) -> tuple[str, str] | None:
@@ -57,7 +51,7 @@ def annual_values(units: list[dict]) -> list[dict]:
 
 @dlt.resource(name="sec_facts", write_disposition="merge", primary_key=["ticker", "tag", "fiscal_year_end"])
 def sec_facts():
-    ticker_map = _get("https://www.sec.gov/files/company_tickers.json")
+    ticker_map = get_json("https://www.sec.gov/files/company_tickers.json", headers={"User-Agent": USER_AGENT}, timeout=20)
 
     for ticker in TICKERS:
         resolved = resolve_cik(ticker, ticker_map)
@@ -67,7 +61,7 @@ def sec_facts():
         cik, company_name = resolved
 
         try:
-            facts = _get(f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json")
+            facts = get_json(f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json", headers={"User-Agent": USER_AGENT}, timeout=20)
         except Exception as e:
             print(f"skip {ticker}: {e}")
             continue

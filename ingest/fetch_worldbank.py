@@ -1,8 +1,8 @@
 """dlt pipeline: World Bank indicators -> raw staging table (worldbank_raw.worldbank_indicators)."""
 
 import dlt
-import requests
 
+from ingest.http import get_json
 from src.config import DATABASE_URL
 
 WB_INDICATORS = {
@@ -13,6 +13,28 @@ WB_INDICATORS = {
 WB_COUNTRIES = ["US", "RU", "CN", "DE", "GB", "BR", "IN", "JP"]
 
 
+def fetch_worldbank_series(country: str, code: str, label: str) -> list[dict]:
+    """Fetch one (country, indicator) time series and shape it into staging rows."""
+    data = get_json(
+        f"https://api.worldbank.org/v2/country/{country}/indicator/{code}",
+        params={"format": "json", "per_page": 100},
+    )
+    if len(data) < 2 or not data[1]:
+        return []
+    return [
+        {
+            "country": row["country"]["value"],
+            "country_code": country,
+            "indicator_code": code,
+            "indicator_label": label,
+            "year": int(row["date"]),
+            "value": float(row["value"]),
+        }
+        for row in data[1]
+        if row["value"] is not None
+    ]
+
+
 @dlt.resource(
     name="worldbank_indicators",
     write_disposition="merge",
@@ -21,23 +43,7 @@ WB_COUNTRIES = ["US", "RU", "CN", "DE", "GB", "BR", "IN", "JP"]
 def worldbank_indicators():
     for country in WB_COUNTRIES:
         for code, label in WB_INDICATORS.items():
-            url = f"https://api.worldbank.org/v2/country/{country}/indicator/{code}"
-            resp = requests.get(url, params={"format": "json", "per_page": 100}, timeout=15)
-            resp.raise_for_status()
-            data = resp.json()
-            if len(data) < 2 or not data[1]:
-                continue
-            for row in data[1]:
-                if row["value"] is None:
-                    continue
-                yield {
-                    "country": row["country"]["value"],
-                    "country_code": country,
-                    "indicator_code": code,
-                    "indicator_label": label,
-                    "year": int(row["date"]),
-                    "value": float(row["value"]),
-                }
+            yield from fetch_worldbank_series(country, code, label)
 
 
 def run():

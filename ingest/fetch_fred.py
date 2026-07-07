@@ -1,8 +1,8 @@
 """dlt pipeline: FRED macro series -> raw staging table (fred_raw.fred_series). Needs FRED_API_KEY."""
 
 import dlt
-import requests
 
+from ingest.http import get_json
 from src.config import DATABASE_URL, FRED_API_KEY
 
 FRED_SERIES = {
@@ -28,9 +28,7 @@ def fred_series():
             "file_type": "json",
             "observation_start": "2015-01-01",
         }
-        resp = requests.get(url, params=params, timeout=15)
-        resp.raise_for_status()
-        data = resp.json()
+        data = get_json(url, params=params)
         for obs in data.get("observations", []):
             if obs["value"] == ".":
                 continue
