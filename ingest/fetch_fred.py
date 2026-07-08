@@ -14,6 +14,29 @@ FRED_SERIES = {
 }
 
 
+def fetch_fred_series(series_id: str, label: str) -> list[dict]:
+    """Fetch one FRED series and shape it into staging rows."""
+    data = get_json(
+        "https://api.stlouisfed.org/fred/series/observations",
+        params={
+            "series_id": series_id,
+            "api_key": FRED_API_KEY,
+            "file_type": "json",
+            "observation_start": "2015-01-01",
+        },
+    )
+    return [
+        {
+            "series_id": series_id,
+            "series_label": label,
+            "date": obs["date"],
+            "value": float(obs["value"]),
+        }
+        for obs in data.get("observations", [])
+        if obs["value"] != "."
+    ]
+
+
 @dlt.resource(name="fred_series", write_disposition="merge", primary_key=["series_id", "date"])
 def fred_series():
     if not FRED_API_KEY:
@@ -21,23 +44,7 @@ def fred_series():
             "FRED_API_KEY not set. Get a free key: https://fred.stlouisfed.org/docs/api/api_key.html"
         )
     for series_id, label in FRED_SERIES.items():
-        url = "https://api.stlouisfed.org/fred/series/observations"
-        params = {
-            "series_id": series_id,
-            "api_key": FRED_API_KEY,
-            "file_type": "json",
-            "observation_start": "2015-01-01",
-        }
-        data = get_json(url, params=params)
-        for obs in data.get("observations", []):
-            if obs["value"] == ".":
-                continue
-            yield {
-                "series_id": series_id,
-                "series_label": label,
-                "date": obs["date"],
-                "value": float(obs["value"]),
-            }
+        yield from fetch_fred_series(series_id, label)
 
 
 def run():
