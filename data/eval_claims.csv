@@ -1,0 +1,53 @@
+id,claim,expected_verdict,source_hint
+1,"Apple's revenue for fiscal year ending 2025-09-27 was $416,161,000,000.",VERIFIED,secedgar:AAPL:Revenue
+2,"Apple's net income for fiscal year ending 2025-09-27 was $112,010,000,000.",VERIFIED,secedgar:AAPL:Net income
+3,"Microsoft's total assets for fiscal year ending 2025-06-30 were $619,003,000,000.",VERIFIED,secedgar:MSFT:Total assets
+4,"Amazon's revenue for fiscal year ending 2025-12-31 was $716,924,000,000.",VERIFIED,secedgar:AMZN:Revenue
+5,"JPMorgan Chase's total assets for fiscal year ending 2025-12-31 were $4,424,900,000,000.",VERIFIED,secedgar:JPM:Total assets
+6,"Tesla's net income for fiscal year ending 2025-12-31 was $3,794,000,000.",VERIFIED,secedgar:TSLA:Net income
+7,"Walmart's revenue for fiscal year ending 2026-01-31 was $713,163,000,000.",VERIFIED,secedgar:WMT:Revenue
+8,"Meta's net income for fiscal year ending 2025-12-31 was $60,458,000,000.",VERIFIED,secedgar:META:Net income
+9,"US GDP in 2025 was approximately $30.77 trillion.",VERIFIED,worldbank:US:GDP
+10,"Germany's unemployment rate in 2025 was 4.0%.",VERIFIED,worldbank:DE:Unemployment
+11,"Japan's inflation rate in 2025 was 3.0%.",VERIFIED,worldbank:JP:Inflation
+12,"Apple's revenue for fiscal year ending 2025-09-27 was $250,000,000,000.",REFUTED,secedgar:AAPL:Revenue (real value 416.161B)
+13,"Microsoft's net income for fiscal year ending 2025-06-30 was $50,000,000,000.",REFUTED,secedgar:MSFT:Net income (real value 101.832B)
+14,"Amazon's total assets for fiscal year ending 2025-12-31 were $200,000,000,000.",REFUTED,secedgar:AMZN:Total assets (real value 818.042B)
+15,"JPMorgan Chase's revenue for fiscal year ending 2025-12-31 was $500,000,000,000.",REFUTED,secedgar:JPM:Revenue (real value 182.447B)
+16,"Tesla's revenue for fiscal year ending 2025-12-31 was $200,000,000,000.",REFUTED,secedgar:TSLA:Revenue (real value 94.827B)
+17,"Walmart's net income for fiscal year ending 2026-01-31 was $80,000,000,000.",REFUTED,secedgar:WMT:Net income (real value 21.893B)
+18,"US GDP in 2025 was approximately $10 trillion.",REFUTED,worldbank:US:GDP (real value ~30.77T)
+19,"Germany's inflation rate in 2025 was 12.0%.",REFUTED,worldbank:DE:Inflation (real value 2.0%)
+20,"Japan's unemployment rate in 2025 was 15.0%.",REFUTED,worldbank:JP:Unemployment (real value 2.0%)
+21,"The price-to-earnings ratio is calculated by dividing a company's market capitalization by its total revenue.",REFUTED,wikipedia:Price-earnings ratio (actual: price per share / earnings per share)
+22,"Netflix's revenue for fiscal year 2025 was $39 billion.",INSUFFICIENT,not in knowledge base (Netflix not in TICKERS)
+23,"Brazil's GDP in 2025 was approximately $2.1 trillion.",REFUTED,worldbank:BR:GDP (real value ~2.28T; was wrongly labeled INSUFFICIENT before verification)
+24,"Apple's revenue for fiscal year 2010 was $65 billion.",INSUFFICIENT,not in knowledge base (only recent 10-K filings loaded per annual_values dedup)
+25,"NVIDIA's net income for fiscal year 2025 was $30 billion.",INSUFFICIENT,not in knowledge base (NVIDIA not in TICKERS)
+26,"Apple's total assets for fiscal year ending 2022-09-24 were $352,755,000,000.",VERIFIED,secedgar:AAPL:Total assets (FY2022)
+27,"Amazon's net income for fiscal year ending 2021-12-31 was $33,364,000,000.",VERIFIED,secedgar:AMZN:Net income (FY2021)
+28,"Alphabet's revenue for fiscal year ending 2022-12-31 was $282,836,000,000.",VERIFIED,secedgar:GOOGL:Revenue (FY2022)
+29,"JPMorgan Chase's net income for fiscal year ending 2022-12-31 was $37,676,000,000.",VERIFIED,secedgar:JPM:Net income (FY2022)
+30,"Meta's total assets for fiscal year ending 2021-12-31 were $165,987,000,000.",VERIFIED,secedgar:META:Total assets (FY2021)
+31,"Microsoft's revenue for fiscal year ending 2021-06-30 was $168,088,000,000.",VERIFIED,secedgar:MSFT:Revenue (FY2021)
+32,"Tesla's total assets for fiscal year ending 2022-12-31 were $82,338,000,000.",VERIFIED,secedgar:TSLA:Total assets (FY2022)
+33,"Walmart's net income for fiscal year ending 2022-01-31 was $13,673,000,000.",VERIFIED,secedgar:WMT:Net income (FY2022)
+34,"Amazon reported a net loss of approximately $2.72 billion for fiscal year ending 2022-12-31.",VERIFIED,"secedgar:AMZN:Net income (FY2022, negative value edge case)"
+35,"Apple's total assets for fiscal year ending 2022-09-24 were $100,000,000,000.",REFUTED,secedgar:AAPL:Total assets (real value 352.755B)
+36,"Amazon's net income for fiscal year ending 2021-12-31 was $80,000,000,000.",REFUTED,secedgar:AMZN:Net income (real value 33.364B)
+37,"Alphabet's revenue for fiscal year ending 2022-12-31 was $600,000,000,000.",REFUTED,secedgar:GOOGL:Revenue (real value 282.836B)
+38,"JPMorgan Chase's net income for fiscal year ending 2022-12-31 was $10,000,000,000.",REFUTED,secedgar:JPM:Net income (real value 37.676B)
+39,"Meta's total assets for fiscal year ending 2021-12-31 were $400,000,000,000.",REFUTED,secedgar:META:Total assets (real value 165.987B)
+40,"Microsoft's revenue for fiscal year ending 2021-06-30 was $300,000,000,000.",REFUTED,secedgar:MSFT:Revenue (real value 168.088B)
+41,"Tesla's total assets for fiscal year ending 2022-12-31 were $20,000,000,000.",REFUTED,secedgar:TSLA:Total assets (real value 82.338B)
+42,"Walmart's net income for fiscal year ending 2022-01-31 was $60,000,000,000.",REFUTED,secedgar:WMT:Net income (real value 13.673B)
+43,"Brazil's unemployment rate in 2025 was 6.0%.",VERIFIED,worldbank:BR:Unemployment
+44,"China's inflation rate in 2025 was 0.0%.",VERIFIED,worldbank:CN:Inflation
+45,"The United Kingdom's GDP in 2025 was approximately $4.0 trillion.",VERIFIED,worldbank:GB:GDP
+46,"India's unemployment rate in 2025 was 4.0%.",VERIFIED,worldbank:IN:Unemployment
+47,"Russia's inflation rate in 2025 was 9.0%.",VERIFIED,worldbank:RU:Inflation
+48,"Brazil's unemployment rate in 2025 was 20.0%.",REFUTED,worldbank:BR:Unemployment (real value 6.0%)
+49,"China's inflation rate in 2025 was 8.0%.",REFUTED,worldbank:CN:Inflation (real value 0.0%)
+50,"Russia's GDP in 2025 was approximately $500 billion.",REFUTED,worldbank:RU:GDP (real value ~2.56T)
+51,"South Korea's GDP in 2025 was approximately $1.8 trillion.",INSUFFICIENT,not in knowledge base (South Korea not in WB_COUNTRIES)
+52,"Netflix's total assets for fiscal year 2024 were $50 billion.",INSUFFICIENT,not in knowledge base (Netflix not in TICKERS)

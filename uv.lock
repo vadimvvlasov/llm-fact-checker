@@ -1157,6 +1157,7 @@ source = { editable = "." }
 dependencies = [
     { name = "dlt", extra = ["postgres"] },
     { name = "fastapi" },
+    { name = "minsearch" },
     { name = "pgvector" },
     { name = "psycopg2-binary" },
     { name = "python-dotenv" },
@@ -1177,6 +1178,7 @@ dev = [
 requires-dist = [
     { name = "dlt", extras = ["postgres"], specifier = ">=1.4.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "minsearch", specifier = ">=0.2.0" },
     { name = "pgvector", specifier = ">=0.3.6" },
     { name = "psycopg2-binary", specifier = ">=2.9.12" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
@@ -1298,6 +1300,22 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729, upload-time = "2022-08-14T12:40:10.846Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979, upload-time = "2022-08-14T12:40:09.779Z" },
+]
+
+[[package]]
+name = "minsearch"
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "pandas" },
+    { name = "scikit-learn" },
+    { name = "stemlite" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4e/3c/3e52e500c2d46f06548db28a03140abe7279da061c140e841407b9f009e9/minsearch-0.2.0.tar.gz", hash = "sha256:cec1def0aaf97d230dec9d88fa6fbd99965bdfec84a4db09a684564023652d2b", size = 135087, upload-time = "2026-07-02T08:20:13.435Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/26/4a/1605cbf10e15ae2f17226e2cf8acd84352ba29c2caa5aa757ff1f3e49a26/minsearch-0.2.0-py3-none-any.whl", hash = "sha256:a43cda360cd980347228c02eb00e5a72d2a12ff400dae734ea6ec509444dabe9", size = 28464, upload-time = "2026-07-02T08:20:12.407Z" },
 ]
 
 [[package]]
@@ -3176,6 +3194,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/eb/e3/7c1dc7381d9f8ab7d854328ebfa884e62cb3f3d8549ddfd37c7814f42afa/starlette-1.3.1.tar.gz", hash = "sha256:05d0213193f2fbaae60e2ecb593b4add4262ad4e46536b54abe36f11a71724e0", size = 2703240, upload-time = "2026-06-12T09:23:11.602Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ec/bb/2799cc2ede3ed41131f8975621e7213dfc7ef4acbbaadfa440f32500c370/starlette-1.3.1-py3-none-any.whl", hash = "sha256:c7372aae11c3c3f26a42df7bd626cec2f47d03483d261d369516a615a53714c6", size = 73632, upload-time = "2026-06-12T09:23:10.017Z" },
+]
+
+[[package]]
+name = "stemlite"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ea/4e/4e5ae5f473c0282e76bc3b4966614dc6c72cc6458435e559597b5421ff55/stemlite-0.1.0.tar.gz", hash = "sha256:062d44a1314af379ea6a09f8467d07a776407e456c9932e4e182ef8cfb3948d5", size = 87502, upload-time = "2026-07-02T07:58:24.385Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/02/4d/a71e4324552914bb279f3b28b9dbdf7b1fcace463146f38a49ca076b385d/stemlite-0.1.0-py3-none-any.whl", hash = "sha256:f0488b4bb5fc38d5796a0d627bb35e99c2a47d9f1b49ffea5400b52099eca5b8", size = 9308, upload-time = "2026-07-02T07:58:23.226Z" },
 ]
 
 [[package]]
