@@ -140,7 +140,15 @@ def load_secedgar():
     print(f"secedgar: {len(groups)} series -> {total_chunks} chunks")
 
 
+def _reset_vector_store():
+    """documents/document_chunks have no upsert key — truncate before a full rebuild
+    so re-running this script doesn't duplicate every document and chunk."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("TRUNCATE TABLE document_chunks, documents")
+
+
 def run():
+    _reset_vector_store()
     load_wikipedia()
     load_worldbank()
     load_fred()
