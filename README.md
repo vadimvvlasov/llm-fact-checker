@@ -42,7 +42,7 @@ Turns report text into verified claims, and keeps the knowledge base fresh on a 
 - **What it does:** an LLM (LangChain) extracts factual claims from the text. A vector-search RAG chain retrieves supporting evidence per claim. An Airflow DAG re-runs ingestion daily so the knowledge base doesn't go stale.
 - **Output:** `POST /verify` endpoint → a verdict per claim — `VERIFIED` / `REFUTED` / `INSUFFICIENT`, with the matched source quote.
 
-Details: [Phase 2 — RAG Pipeline + Orchestration](docs/phase-2-rag-pipeline.md) (in progress — claim extractor done, RAG chain/`/verify`/Airflow not started). Claim extraction walkthrough: [notebooks/phase2_claim_extraction.ipynb](notebooks/phase2_claim_extraction.ipynb).
+Details: [Phase 2 — RAG Pipeline + Orchestration](docs/phase-2-rag-pipeline.md) (in progress — claim extractor + verdict logic done, `/verify`/Airflow not started). Walkthrough: [notebooks/phase2_rag_pipeline.ipynb](notebooks/phase2_rag_pipeline.ipynb).
 
 ### Phase 3 — Hybrid Search + Evaluation 🚧 in progress
 
@@ -114,4 +114,4 @@ uv run uvicorn src.api:app --reload
 - [Phase 1 — Ingestion](docs/phase-1-ingestion.md)
 - [Phase 1 tutorial notebook](notebooks/phase1_ingestion.ipynb)
 - [Phase 2 — RAG Pipeline + Orchestration](docs/phase-2-rag-pipeline.md)
-- [Phase 2 claim extraction notebook](notebooks/phase2_claim_extraction.ipynb)
+- [Phase 2 walkthrough notebook](notebooks/phase2_rag_pipeline.ipynb)

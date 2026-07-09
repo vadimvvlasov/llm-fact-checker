@@ -56,37 +56,44 @@ Open design decisions:
 
 ## 2. RAG chain (retrieval → verdict)
 
-Retrieval already exists — nothing new to build there. `src/db.py` has
+Retrieval already existed — nothing new needed there. `src/db.py` has
 `text_search`, `vector_search`, `hybrid_search` (RRF), all benchmarked in
-`eval/compare_retrieval.py`. The chain just calls one of these per claim
-(`hybrid_search` is the current best guess — no eval numbers yet to confirm
-it beats plain vector search).
+`eval/compare_retrieval.py`. `src/verifier.py` calls `hybrid_search` per
+claim (still the best guess — no eval numbers yet to confirm it beats plain
+vector search; that's Phase 3's job).
 
-What's actually new for Phase 2:
+**Done:** `src/verifier.py`'s `verify_claim(claim, prompt=VERDICT_PROMPT_V1)` —
+LLM-as-judge over the top-5 retrieved chunks, returns a `Verdict`
+(`verdict` / `source` / `quote`) via structured output. Went with
+LLM-as-judge for everything (not the rule-based numeric-tolerance idea
+below) — simplest to implement, and it's the same mechanism Phase 3
+evaluates anyway. `prompt` is an explicit function argument, not hardcoded,
+specifically so Phase 3 can pass a second prompt variant at the same call
+site for the "LLM evaluation, 2 prompts" rubric line.
 
-- **Verdict logic:** given a claim + top-k retrieved chunks, decide
-  `VERIFIED` / `REFUTED` / `INSUFFICIENT`. Two options:
-  - LLM-as-judge: pass claim + chunks to an LLM, ask for a verdict + which
-    chunk supports it. Simple, but is itself a judgment call worth
-    evaluating in Phase 3 (this *is* the RAGAS/LLM-as-judge evaluation
-    target).
-  - Rule-based for numeric claims: parse the number out of the claim and
-    the retrieved fact-sentence, compare with a tolerance (the eval set's
-    `REFUTED` rows use gross mismatches — Apple's revenue off by $166B —
-    so a tolerance-based check might get most of the way without an LLM
-    call per claim). Wikipedia-sourced definitional claims would still need
-    the LLM path.
-  - Probably start with LLM-as-judge for everything — simplest to implement,
-    matches what Phase 3 evaluates anyway. Revisit if latency/cost becomes a
-    problem.
-- **`INSUFFICIENT` handling:** `data/eval_claims.csv` already has rows with
-  `expected_verdict=INSUFFICIENT` — claims with no matching doc in the KB
-  (see `eval/compare_retrieval.py`'s `load_claims()`, which excludes them from
-  hit-rate scoring since there's no correct retrieval target). The verdict
-  logic needs a real "no good match" path, not just whatever the top-k
-  returns.
-- **Source quote:** return the actual retrieved chunk text as the citation,
-  not a paraphrase.
+Verified against one claim from each `data/eval_claims.csv` bucket:
+`VERIFIED` (Apple revenue, correct value), `REFUTED` (Apple revenue,
+wrong value — same source chunk, judge caught the mismatch),
+`INSUFFICIENT` (Netflix — not in the KB, judge correctly declined to
+guess from an unrelated chunk instead of hallucinating a match).
+
+Considered but not built — a rule-based path for numeric claims (parse
+the number out of the claim and the retrieved fact-sentence, compare with
+a tolerance; the eval set's `REFUTED` rows are gross mismatches like
+Apple's revenue off by $166B, so tolerance-checking might get most of the
+way without an LLM call). Skipped for now — Wikipedia-sourced definitional
+claims would still need the LLM path anyway, so it'd be a second code path
+for uncertain latency/cost savings. Revisit only if `/verify` latency
+becomes a real problem.
+
+**`INSUFFICIENT` handling:** confirmed above — the judge is instructed not
+to force a match when no retrieved chunk actually covers the claim's
+entity+metric, rather than relying on an empty-results check (retrieval
+always returns top-k, even when nothing relevant exists).
+
+**Source quote:** `Verdict.quote` is the actual retrieved chunk text, not a
+paraphrase — confirmed in the test above (`quote` matches
+`document_chunks.content` verbatim).
 
 ## 3. API — `POST /verify`
 
@@ -127,7 +134,11 @@ Re-runs Phase 1 ingestion on a schedule so the KB doesn't go stale.
 - [x] Claim extractor module (`src/claim_extractor.py`) with structured output —
       verified against both OpenRouter (`tencent/hy3:free`) and local Ollama
       (`ornith:latest`)
-- [ ] Verdict logic (LLM-as-judge first pass) wired to `hybrid_search`
+- [x] Verdict logic (LLM-as-judge first pass) wired to `hybrid_search`
+      (`src/verifier.py`) — verified against a VERIFIED/REFUTED/INSUFFICIENT
+      case from each bucket of `data/eval_claims.csv`. Prompt passed as an
+      explicit arg (`VERDICT_PROMPT_V1`), not hardcoded, so Phase 3 can swap
+      in a second variant for the "LLM evaluation, 2 prompts" rubric line
 - [ ] `POST /verify` in `src/api.py`
 - [ ] Airflow service in `docker-compose.yml` + DAG file
 - [ ] Manual smoke test against a few `data/eval_claims.csv` rows before

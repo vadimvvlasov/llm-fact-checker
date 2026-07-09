@@ -2,10 +2,9 @@
 
 from functools import lru_cache
 
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
-from src.config import LLM_MODEL, LLM_PROVIDER, OLLAMA_BASE_URL, OPENROUTER_API_KEY, OPENROUTER_BASE_URL
+from src.llm import chat_llm
 
 SYSTEM_PROMPT = """You extract checkable factual claims from business report text.
 
@@ -31,16 +30,9 @@ class ClaimList(BaseModel):
     claims: list[Claim]
 
 
-def _llm_kwargs() -> dict:
-    if LLM_PROVIDER == "ollama":
-        return {"base_url": OLLAMA_BASE_URL, "api_key": "ollama"}
-    return {"base_url": OPENROUTER_BASE_URL, "api_key": OPENROUTER_API_KEY}
-
-
 @lru_cache(maxsize=1)
 def _structured_llm():
-    llm = ChatOpenAI(model=LLM_MODEL, temperature=0, **_llm_kwargs())
-    return llm.with_structured_output(ClaimList)
+    return chat_llm().with_structured_output(ClaimList)
 
 
 def extract_claims(report_text: str) -> list[Claim]:
