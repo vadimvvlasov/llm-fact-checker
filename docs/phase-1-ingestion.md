@@ -17,6 +17,37 @@ A knowledge-base ingestion pipeline that:
 - Runs on Postgres + `pgvector`, with HNSW and full-text indexes already in
   place for the hybrid search we add in Phase 3
 
+## Data sources
+
+**Wikipedia** (MediaWiki API) — 29 articles on financial/economic terms
+(GDP, Inflation, Unemployment, Stock market, Balance sheet, P/E ratio, IPO,
+M&A, etc. — full list in `WIKI_TOPICS`, `fetch_wikipedia.py`). Pulls
+`title`, `url`, `content` (plaintext extract). Definitional/contextual
+base — explains terms, not numeric facts.
+
+**World Bank** (`api.worldbank.org`) — 3 indicators × 8 countries (US, RU,
+CN, DE, GB, BR, IN, JP): GDP (current US$), inflation (CPI annual %),
+unemployment (% of labor force). Pulls `country`, `country_code`,
+`indicator_code`, `indicator_label`, `year`, `value` as a yearly time
+series. Macro facts for claims like "US GDP in 2025 was $X".
+
+**FRED** (Federal Reserve Economic Data, `api.stlouisfed.org`, needs
+`FRED_API_KEY`) — 5 series, US only, since 2015: GDP, CPI, unemployment
+rate, fed funds rate, 10-year treasury rate. Pulls `series_id`,
+`series_label`, `date`, `value` at higher frequency (monthly/daily) than
+World Bank's yearly data — complements it with denser US macro history.
+
+**SEC EDGAR** (XBRL Company Facts API, `sec.gov`) — 8 tickers (AAPL, MSFT,
+AMZN, TSLA, GOOGL, META, JPM, WMT), 10-K annual filings only. Pulls
+Revenue, Net income, Total assets per fiscal year: `ticker`,
+`company_name`, `tag`, `fiscal_year_end`, `value_usd`, `form`, `filed`.
+Corporate financial facts for claims like "Apple's revenue for FY2025 was
+$X".
+
+Wikipedia gives qualitative context/definitions; World Bank + FRED + SEC
+EDGAR give quantitative, checkable facts (numbers, dates, amounts) — the
+actual target for claim verification.
+
 ## Setting up the project
 
 Start Postgres with the `pgvector` extension:
@@ -108,11 +139,11 @@ embeddings = embed_texts(chunks)  # sentence-transformers/all-MiniLM-L6-v2, 384-
 
 ```
 uv run python -m ingest.build_vector_store
-wikipedia: 29 articles -> 1921 chunks
+wikipedia: 29 articles -> 1896 chunks
 worldbank: 24 series -> 1226 chunks
+fred: 5 series -> 3332 chunks
 secedgar: 24 series -> 392 chunks
-fred: no data yet (run ingest/fetch_fred.py with FRED_API_KEY first) — skipping
-TOTAL chunks in vector store: 3539
+TOTAL chunks in vector store: 6846
 ```
 
 ## What we learned
@@ -136,12 +167,17 @@ TOTAL chunks in vector store: 3539
 
 ## Known issues (before Phase 2 automates this)
 
-- `build_vector_store.py` has no upsert and no unique constraint on
+- ~~`build_vector_store.py` has no upsert and no unique constraint on
   `documents.title` — running it twice duplicates every document and
-  chunk. Needs an upsert on `(source, title)` or a truncate-and-rebuild
-  step before the Phase 2 Airflow DAG schedules it daily.
+  chunk.~~ **Fixed 2026-07-07** — hit this for real (58/48/48 docs instead
+  of 29/24/24, an exact ×2 from a stale `pgdata` volume plus a second run).
+  `run()` now truncates `document_chunks`/`documents` before rebuilding, so
+  it's a full-rebuild, not an append. Still no incremental upsert — fine for
+  now since Phase 1 doesn't run on a schedule yet; revisit if Phase 2's
+  Airflow DAG needs incremental loads instead of a full daily rebuild.
 - No retry/backoff on the raw `requests` calls — a transient 429/5xx fails
-  the whole run.
+  the whole run. Still open, low priority (all 4 sources were fetched
+  clean today, no retries needed in practice).
 
 We now have a populated, reproducible vector store. In Phase 2 we build the
 claim extractor and the RAG chain on top of it.
