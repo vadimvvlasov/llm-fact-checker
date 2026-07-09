@@ -97,7 +97,7 @@ paraphrase — confirmed in the test above (`quote` matches
 
 ## 3. API — `POST /verify`
 
-Replace the `/health`-only stub in `src/api.py`.
+**Done.** `src/api.py` wires `extract_claims` → `verify_claim` per claim:
 
 ```
 POST /verify
@@ -105,15 +105,25 @@ POST /verify
 
 → 200
 { "claims": [
-    { "claim": "...", "verdict": "VERIFIED", "source": "secedgar:AAPL:Revenue",
-      "quote": "Apple (AAPL) reported Revenue of $416,161,000,000 for fiscal year ending 2025-09-27..." },
+    { "claim": "Apple reported revenue of $416,161,000,000 for fiscal year ending 2025-09-27.",
+      "verdict": "VERIFIED", "source": "Apple Inc. (AAPL) — Revenue",
+      "quote": "Apple Inc. (AAPL) reported Revenue of $416,161,000,000 for fiscal year ending 2025-09-27 (10-K filed 2025-10-31)." },
     ...
   ]
 }
 ```
 
-Exact schema is a draft — firm it up once claim extraction's output shape is
-settled (§1).
+Tested end-to-end against a live server (`uvicorn src.api:app`) with a
+3-claim report text: `VERIFIED` (correct Apple revenue), `INSUFFICIENT`
+(Netflix, not in KB), `REFUTED` (wrong Apple revenue figure) — all three
+verdicts correct.
+
+**Known rough edge:** on the `REFUTED` case, `source`/`quote` came back
+`null` instead of the contradicting chunk — the judge got the verdict right
+but didn't always fill the citation fields for `REFUTED` the way it does for
+`VERIFIED`. Prompt says to quote for both; model doesn't always comply.
+Worth tightening as part of Phase 3's prompt-optimization backlog item
+(the meta-prompt-refinement pass) rather than patching now.
 
 ## 4. Orchestration — Airflow DAG
 
@@ -139,7 +149,9 @@ Re-runs Phase 1 ingestion on a schedule so the KB doesn't go stale.
       case from each bucket of `data/eval_claims.csv`. Prompt passed as an
       explicit arg (`VERDICT_PROMPT_V1`), not hardcoded, so Phase 3 can swap
       in a second variant for the "LLM evaluation, 2 prompts" rubric line
-- [ ] `POST /verify` in `src/api.py`
+- [x] `POST /verify` in `src/api.py` — tested end-to-end against a live
+      server, 3/3 verdicts correct (source/quote null on the REFUTED case
+      is a known rough edge, see §3)
 - [ ] Airflow service in `docker-compose.yml` + DAG file
 - [ ] Manual smoke test against a few `data/eval_claims.csv` rows before
       Phase 3 runs the full RAGAS evaluation
