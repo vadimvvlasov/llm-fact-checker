@@ -32,7 +32,7 @@ Builds the knowledge base. The foundation for every later phase.
 - **What it does:** fetches each source. Loads raw data into Postgres. Splits long articles into sentence chunks. Turns numeric facts into short sentences. Embeds every chunk into a vector.
 - **Output:** a searchable knowledge base — `documents` and `document_chunks` tables in Postgres.
 
-Details: [Phase 1 — Ingestion](docs/phase-1-ingestion.md). Step-by-step tutorial: [notebooks/tutorial_phase1_ingestion.ipynb](notebooks/tutorial_phase1_ingestion.ipynb).
+Details: [Phase 1 — Ingestion](docs/phase-1-ingestion.md). Step-by-step tutorial: [notebooks/phase1_ingestion.ipynb](notebooks/phase1_ingestion.ipynb).
 
 ### Phase 2 — RAG Pipeline + Orchestration 🚧 in progress
 
@@ -44,13 +44,13 @@ Turns report text into verified claims, and keeps the knowledge base fresh on a 
 
 Details: TODO — `docs/phase-2-rag-pipeline.md` (not written yet).
 
-### Phase 3 — Hybrid Search + Evaluation ⏳ not started
+### Phase 3 — Hybrid Search + Evaluation 🚧 in progress
 
 Makes retrieval better, then measures how much better.
 
 - **Input:** the Phase 2 chain + a labeled test set (`data/eval_claims.csv`, 52 claims).
-- **What it does:** combines pgvector + Postgres full-text search via RRF, reranks top-5 with a cross-encoder, rewrites the claim before searching. RAGAS + LLM-as-judge score the pipeline: baseline vs hybrid vs hybrid+rerank.
-- **Output:** retrieval hit-rate/MRR per strategy, RAGAS faithfulness/accuracy numbers.
+- **What it does:** combines pgvector + Postgres full-text search via RRF (`src/db.py`: `text_search`, `vector_search`, `hybrid_search`), reranks top-5 with a cross-encoder, rewrites the claim before searching. RAGAS + LLM-as-judge score the pipeline: baseline vs hybrid vs hybrid+rerank.
+- **Output:** retrieval hit-rate/MRR per strategy, RAGAS faithfulness/accuracy numbers. `eval/compare_retrieval.py` already benchmarks minsearch vs pg full-text vs pgvector vs hybrid RRF on hit_rate@5/MRR@5 — reranker and RAGAS scoring still open.
 
 Details: TODO — `docs/phase-3-evaluation.md` (not written yet).
 
@@ -82,10 +82,10 @@ Wraps the project up for review.
 | HTTP | `requests` (shared `ingest/http.py` helper) | no framework needed for 4 simple REST/JSON APIs |
 | Storage | Postgres 16 + [pgvector](https://github.com/pgvector/pgvector) | one database for raw staging tables and the vector store — no separate vector DB |
 | Embeddings | [sentence-transformers](https://www.sbert.net/) (`all-MiniLM-L6-v2`, 384-dim) | local, free, no API cost — good enough for MVP-scale retrieval |
-| Retrieval | pgvector HNSW + Postgres full-text (`tsvector`), fused with RRF | indexes already in `db/init.sql`, hybrid search lands in Phase 3 |
+| Retrieval | pgvector HNSW + Postgres full-text (`tsvector`), fused with RRF | implemented in `src/db.py`, benchmarked in `eval/compare_retrieval.py`; reranker still open (Phase 3) |
 | RAG chain | LangChain (planned, Phase 2) | claim extraction + retrieval chain |
 | Orchestration | Airflow (planned, Phase 2) | scheduled daily ingestion so the KB doesn't go stale |
-| Evaluation | RAGAS + LLM-as-judge (planned, Phase 3) | baseline vs hybrid vs hybrid+rerank comparison |
+| Evaluation | RAGAS + LLM-as-judge (planned, Phase 3) | baseline vs hybrid vs hybrid+rerank comparison — hit_rate/MRR harness already in `eval/compare_retrieval.py`, RAGAS not wired yet |
 | Monitoring | Langfuse (planned, Phase 4) | latency/cost/feedback dashboards |
 | UI | Streamlit (planned, Phase 4) | claim input → verdict cards |
 | API | FastAPI + uvicorn | `src/api.py`, currently just a `/health` stub — `/verify` lands in Phase 2 |
@@ -110,4 +110,4 @@ uv run uvicorn src.api:app --reload
 ## Docs
 
 - [Phase 1 — Ingestion](docs/phase-1-ingestion.md)
-- [Phase 1 tutorial notebook](notebooks/tutorial_phase1_ingestion.ipynb)
+- [Phase 1 tutorial notebook](notebooks/phase1_ingestion.ipynb)
