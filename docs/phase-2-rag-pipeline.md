@@ -28,14 +28,24 @@ FY2025 was $416.161B"), not opinions or forward-looking statements.
 
 Open design decisions:
 
-- **Model:** OpenRouter, not OpenAI directly — `OPENROUTER_API_KEY` +
-  `LLM_MODEL=nvidia/nemotron-3-ultra-550b-a55b:free` in `.env.example`
-  (same pattern as `llm-zoomcamp-hw2`: OpenAI-compatible client,
+- **Model:** OpenRouter by default, not OpenAI directly — `OPENROUTER_API_KEY` +
+  `LLM_MODEL=tencent/hy3:free` in `.env.example` (same pattern as
+  `llm-zoomcamp-hw2`: OpenAI-compatible client,
   `base_url="https://openrouter.ai/api/v1"`). Free-tier model, $0 cost —
-  fits a capstone with no LLM budget. `langchain-openai`'s `ChatOpenAI`
-  takes `openai_api_base`/`openai_api_key` so it works unchanged against
-  OpenRouter. `langchain` + `langchain-openai` need adding to
-  `pyproject.toml` (not there yet).
+  fits a capstone with no LLM budget. Originally tried
+  `nvidia/nemotron-3-ultra-550b-a55b:free`, but that model's provider was
+  returning `DEGRADED function cannot be invoked` on every call (confirmed
+  with a bare `openai` client too, not a code bug) — swapped to
+  `tencent/hy3:free`, verified working with structured output via
+  `ChatOpenAI(...).with_structured_output(...)`.
+- **Local fallback:** `LLM_PROVIDER=ollama` (`src/config.py`) switches to a
+  local Ollama model (`ornith:latest`, `base_url=http://localhost:11434/v1`,
+  dummy `api_key`) — no API key, no rate limits, works offline. Verified
+  working with the same `with_structured_output` call. Caveat: CPU-only on
+  this machine, ~20s/call once warm, 2+ min cold start — fine as a dev
+  fallback when OpenRouter free tier is degraded or rate-limited, not a
+  latency-sensitive default.
+- `langchain` + `langchain-openai` added to `pyproject.toml`.
 - **Output schema:** structured output (function calling / `with_structured_output`)
   so extraction returns a typed list, not text to re-parse — e.g.
   `[{claim: str, entity: str, metric: str, value: float, date: str}]`.
@@ -113,8 +123,10 @@ Re-runs Phase 1 ingestion on a schedule so the KB doesn't go stale.
 
 ## Task breakdown
 
-- [ ] Add `langchain`, `langchain-openai`, `apache-airflow` to `pyproject.toml`
-- [ ] Claim extractor module (`src/` or new `pipeline/`) with structured output
+- [x] Add `langchain`, `langchain-openai` to `pyproject.toml` (`apache-airflow` still needed)
+- [x] Claim extractor module (`src/claim_extractor.py`) with structured output —
+      verified against both OpenRouter (`tencent/hy3:free`) and local Ollama
+      (`ornith:latest`)
 - [ ] Verdict logic (LLM-as-judge first pass) wired to `hybrid_search`
 - [ ] `POST /verify` in `src/api.py`
 - [ ] Airflow service in `docker-compose.yml` + DAG file
