@@ -42,7 +42,7 @@ Turns report text into verified claims, and keeps the knowledge base fresh on a 
 - **What it does:** an LLM (LangChain) extracts factual claims from the text. A vector-search RAG chain retrieves supporting evidence per claim. An Airflow DAG re-runs ingestion daily so the knowledge base doesn't go stale.
 - **Output:** `POST /verify` endpoint → a verdict per claim — `VERIFIED` / `REFUTED` / `INSUFFICIENT`, with the matched source quote.
 
-Details: TODO — `docs/phase-2-rag-pipeline.md` (not written yet).
+Details: [Phase 2 — RAG Pipeline + Orchestration](docs/phase-2-rag-pipeline.md) (plan — code not started yet).
 
 ### Phase 3 — Hybrid Search + Evaluation 🚧 in progress
 
@@ -85,7 +85,7 @@ Wraps the project up for review.
 | Storage | Postgres 16 + [pgvector](https://github.com/pgvector/pgvector) | one database for raw staging tables and the vector store — no separate vector DB |
 | Embeddings | [sentence-transformers](https://www.sbert.net/) (`all-MiniLM-L6-v2`, 384-dim) | local, free, no API cost — good enough for MVP-scale retrieval |
 | Retrieval | pgvector HNSW + Postgres full-text (`tsvector`), fused with RRF | implemented in `src/db.py`, benchmarked in `eval/compare_retrieval.py`; reranker still open (Phase 3) |
-| RAG chain | LangChain (planned, Phase 2) | claim extraction + retrieval chain |
+| RAG chain | LangChain (planned, Phase 2) | claim extraction + retrieval chain, via OpenRouter (`nvidia/nemotron-3-ultra-550b-a55b:free`) — $0 LLM cost |
 | Orchestration | Airflow (planned, Phase 2) | scheduled daily ingestion so the KB doesn't go stale |
 | Evaluation | RAGAS + LLM-as-judge (planned, Phase 3) | baseline vs hybrid vs hybrid+rerank comparison — hit_rate/MRR harness already in `eval/compare_retrieval.py`, RAGAS not wired yet |
 | Monitoring | Langfuse (planned, Phase 4) | latency/cost/feedback dashboards |
@@ -98,7 +98,7 @@ Wraps the project up for review.
 ## Quick start
 
 ```bash
-cp .env.example .env        # fill in FRED_API_KEY, OPENAI_API_KEY
+cp .env.example .env        # fill in FRED_API_KEY, OPENROUTER_API_KEY
 docker compose up -d        # postgres+pgvector
 uv sync
 uv run python -m ingest.fetch_wikipedia
