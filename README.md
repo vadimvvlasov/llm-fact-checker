@@ -52,6 +52,8 @@ Makes retrieval better, then measures how much better.
 - **What it does:** combines pgvector + Postgres full-text search via RRF (`src/db.py`: `text_search`, `vector_search`, `hybrid_search`), reranks top-5 with a cross-encoder, rewrites the claim before searching. RAGAS + LLM-as-judge score the pipeline: baseline vs hybrid vs hybrid+rerank.
 - **Output:** retrieval hit-rate/MRR per strategy, RAGAS faithfulness/accuracy numbers. `eval/compare_retrieval.py` already benchmarks minsearch vs pg full-text vs pgvector vs hybrid RRF on hit_rate@5/MRR@5 — reranker and RAGAS scoring still open.
 
+**Backlog:** `document_chunks.metadata` has a GIN index (`db/init.sql`) but no query filters on it yet — source-filtered hybrid search (e.g. restrict to `secedgar` when the claim extractor tags a claim as company-financial) could cut retrieval noise. Blocked on Phase 2's claim extractor producing a source tag to filter on. Also untried: `hnsw.ef_search` tuning as a speed/accuracy knob in the eval harness.
+
 Details: TODO — `docs/phase-3-evaluation.md` (not written yet).
 
 ### Phase 4 — UI + Monitoring ⏳ not started
