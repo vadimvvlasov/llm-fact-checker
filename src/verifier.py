@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from src.claim_extractor import Claim
 from src.db import get_conn, hybrid_search
 from src.embeddings import embed_texts
-from src.llm import chat_llm
+from src.llm import invoke_structured
 
 VERDICT_PROMPT_V1 = """You are a fact-checker. You're given a claim and a set of retrieved
 evidence chunks from a knowledge base. Decide:
@@ -32,10 +32,6 @@ class Verdict(BaseModel):
     quote: str | None = Field(description="Verbatim chunk text supporting the verdict, or null")
 
 
-def _judge(prompt: str):
-    return chat_llm().with_structured_output(Verdict), prompt
-
-
 def verify_claim(claim: Claim, prompt: str = VERDICT_PROMPT_V1, top_k: int = 5) -> Verdict:
     with get_conn() as conn:
         embedding = embed_texts([claim.text])[0]
@@ -50,5 +46,4 @@ def verify_claim(claim: Claim, prompt: str = VERDICT_PROMPT_V1, top_k: int = 5) 
         f"(entity={claim.entity!r}, metric={claim.metric!r}, value={claim.value}, date={claim.date!r})\n\n"
         f"Retrieved evidence:\n{evidence}"
     )
-    judge, prompt = _judge(prompt)
-    return judge.invoke([("system", prompt), ("user", user_message)])
+    return invoke_structured(Verdict, [("system", prompt), ("user", user_message)])

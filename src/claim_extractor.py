@@ -1,10 +1,8 @@
 """LLM extracts checkable factual claims (a number tied to an entity) from report text."""
 
-from functools import lru_cache
-
 from pydantic import BaseModel, Field
 
-from src.llm import chat_llm
+from src.llm import invoke_structured
 
 SYSTEM_PROMPT = """You extract checkable factual claims from business report text.
 
@@ -30,11 +28,6 @@ class ClaimList(BaseModel):
     claims: list[Claim]
 
 
-@lru_cache(maxsize=1)
-def _structured_llm():
-    return chat_llm().with_structured_output(ClaimList)
-
-
 def extract_claims(report_text: str) -> list[Claim]:
-    result = _structured_llm().invoke([("system", SYSTEM_PROMPT), ("user", report_text)])
+    result = invoke_structured(ClaimList, [("system", SYSTEM_PROMPT), ("user", report_text)])
     return result.claims

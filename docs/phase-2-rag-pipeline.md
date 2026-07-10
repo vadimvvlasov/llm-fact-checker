@@ -45,6 +45,12 @@ Open design decisions:
   this machine, ~20s/call once warm, 2+ min cold start — fine as a dev
   fallback when OpenRouter free tier is degraded or rate-limited, not a
   latency-sensitive default.
+- **Third option, `LLM_PROVIDER=groq`** (`qwen/qwen3.6-27b`) — fast, free, but
+  `with_structured_output()` 400s on it (Groq's strict `json_schema` only
+  supports `gpt-oss` models). Use a `gpt-oss` model if picking groq.
+- **Responses API:** `chat_llm()` sets `use_responses_api=True` — all three
+  providers support it (confirmed via `curl`, not docs). No effect on
+  structured output; cleans up plain-call reasoning/answer separation.
 - `langchain` + `langchain-openai` added to `pyproject.toml`.
 - **Output schema:** structured output (function calling / `with_structured_output`)
   so extraction returns a typed list, not text to re-parse — e.g.

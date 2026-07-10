@@ -23,7 +23,7 @@ LLM_PROVIDERS = {
     "openrouter": {
         "base_url": "https://openrouter.ai/api/v1",
         "api_key": os.getenv("OPENROUTER_API_KEY", ""),
-        "default_model": "tencent/hy3:free",
+        "default_model": "poolside/laguna-xs-2.1:free",
         "timeout": 30,
         "max_retries": 1,
     },
