@@ -16,6 +16,11 @@ dependencies = [
     "minsearch>=0.2.0",
     "langchain>=0.3.0",
     "langchain-openai>=0.2.0",
+    "ragas>=0.4.3",
+    # ragas 0.4.3 imports langchain_community.chat_models.vertexai unconditionally;
+    # that module was removed in langchain-community>=0.4 (moved to
+    # langchain-google-vertexai), which breaks `import ragas` outright.
+    "langchain-community<0.4",
 ]
 
 [build-system]

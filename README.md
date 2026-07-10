@@ -14,7 +14,7 @@ Takes report text → extracts claims → retrieves supporting evidence from a k
 
 **Output:** list of extracted claims, each with a verdict (`VERIFIED` / `REFUTED` / `INSUFFICIENT`), the matched source, and a direct quote.
 
-**Evaluation:** in progress (Phase 3) — RAGAS + LLM-as-judge against a 52-claim labeled test set (`data/eval_claims.csv`). Numbers land here once the phase ships.
+**Evaluation:** in progress (Phase 3) — RAGAS + LLM-as-judge against a 76-claim labeled test set (`data/eval_claims.csv`). Numbers land here once the phase ships.
 
 **Demo:** in progress (Phase 4) — Streamlit UI link lands here once deployed.
 
@@ -48,7 +48,7 @@ Details: [Phase 2 — RAG Pipeline + Orchestration](docs/phase-2-rag-pipeline.md
 
 Makes retrieval better, then measures how much better.
 
-- **Input:** the Phase 2 chain + a labeled test set (`data/eval_claims.csv`, 52 claims).
+- **Input:** the Phase 2 chain + a labeled test set (`data/eval_claims.csv`, 76 claims).
 - **What it does:** combines pgvector + Postgres full-text search via RRF (`src/db.py`: `text_search`, `vector_search`, `hybrid_search`), reranks top-5 with a cross-encoder, rewrites the claim before searching. RAGAS + LLM-as-judge score the pipeline: baseline vs hybrid vs hybrid+rerank.
 - **Output:** retrieval hit-rate/MRR per strategy, RAGAS faithfulness/accuracy numbers. `eval/compare_retrieval.py` already benchmarks minsearch vs pg full-text vs pgvector vs hybrid RRF on hit_rate@5/MRR@5 — reranker and RAGAS scoring still open.
 
