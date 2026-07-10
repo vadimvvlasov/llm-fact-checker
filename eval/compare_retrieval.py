@@ -66,6 +66,10 @@ def is_relevant(row: dict, source_hint: str) -> bool:
         topic = source_hint.split(":", 1)[1].split(" (")[0].strip()
         return _normalize(topic) in _normalize(row["title"])
 
+    if source == "fred":
+        series_id = source_hint.split(":", 1)[1].split(" (")[0].strip()
+        return meta.get("series_id") == series_id
+
     return False
 
 
