@@ -39,9 +39,12 @@ dependency).
 - [x] Cross-encoder reranker (`src/rerank.py`) — demoed on two cases
       (SEC-filing claim, fuzzier Wikipedia definitional claim) in
       `notebooks/phase3_evaluation.ipynb`
+- [x] Extend `eval/compare_retrieval.py` with a `hybrid_rerank` row
+      (hit_rate@3/MRR@3) — on the 47 non-INSUFFICIENT eval claims:
+      `hybrid_rrf` hit_rate@5=100% MRR@5=0.954 → `hybrid_rerank`
+      hit_rate@3=100% MRR@3=1.000. Narrower top-3 and a better ranking, not
+      just a smaller list.
 - [ ] Wire `rerank()` into `verify_claim()` (`src/verifier.py`)
-- [ ] Extend `eval/compare_retrieval.py` with a `hybrid_rerank` row
-      (hit_rate@3/MRR@3)
 - [ ] RAGAS + LLM-as-judge evaluation (baseline vs hybrid vs hybrid+rerank)
 - [ ] Query rewriting (LLM rephrases the claim before retrieval)
 

@@ -1,8 +1,8 @@
-"""Compare lexical (minsearch), Postgres full-text, pgvector, and hybrid (RRF) retrieval
-against data/eval_claims.csv, to see whether a cheap keyword search is enough or whether
-vector/hybrid retrieval earns its extra infra cost.
+"""Compare lexical (minsearch), Postgres full-text, pgvector, hybrid (RRF), and
+hybrid+rerank retrieval against data/eval_claims.csv, to see whether a cheap keyword
+search is enough or whether vector/hybrid/reranked retrieval earns its extra cost.
 
-Metric per method: hit_rate@5 and MRR@5 against ground-truth documents derived from each
+Metric per method: hit_rate@k and MRR@k against ground-truth documents derived from each
 claim's `source_hint` column. Rows labeled INSUFFICIENT (no matching doc in the KB) are
 excluded — there is no correct retrieval target for them.
 """
@@ -15,9 +15,11 @@ from minsearch import Index
 
 from src.db import get_conn, fetch_all_chunks, text_search, vector_search, hybrid_search
 from src.embeddings import embed_texts
+from src.rerank import rerank
 
 EVAL_CSV = Path(__file__).resolve().parent.parent / "data" / "eval_claims.csv"
 TOP_K = 5
+RERANK_K = 3  # matches verify_claim's real top-5 -> top-3 rerank width
 
 WB_CODE_TO_NAME = {
     "US": "United States", "RU": "Russian Federation", "CN": "China", "DE": "Germany",
@@ -75,7 +77,7 @@ def hit_rank(results: list[dict], source_hint: str) -> int | None:
     return None
 
 
-def score(name: str, claims: list[dict], retrieve_fn) -> None:
+def score(name: str, claims: list[dict], retrieve_fn, k: int = TOP_K) -> None:
     hits, rr_sum = 0, 0.0
     for claim in claims:
         results = retrieve_fn(claim["claim"])
@@ -84,7 +86,7 @@ def score(name: str, claims: list[dict], retrieve_fn) -> None:
             hits += 1
             rr_sum += 1.0 / rank
     n = len(claims)
-    print(f"{name:>12}: hit_rate@{TOP_K}={hits}/{n} ({hits / n:.0%})   MRR@{TOP_K}={rr_sum / n:.3f}")
+    print(f"{name:>13}: hit_rate@{k}={hits}/{n} ({hits / n:.0%})   MRR@{k}={rr_sum / n:.3f}")
 
 
 def main():
@@ -114,10 +116,14 @@ def main():
         with get_conn() as conn:
             return hybrid_search(conn, query, embedding, top_k=TOP_K)
 
+    def pg_hybrid_rerank_retrieve(query: str) -> list[dict]:
+        return rerank(query, pg_hybrid_retrieve(query), top_k=RERANK_K)
+
     score("minsearch", claims, minsearch_retrieve)
     score("pg_text", claims, pg_text_retrieve)
     score("pg_vector", claims, pg_vector_retrieve)
     score("hybrid_rrf", claims, pg_hybrid_retrieve)
+    score("hybrid_rerank", claims, pg_hybrid_rerank_retrieve, k=RERANK_K)
 
 
 if __name__ == "__main__":
