@@ -26,8 +26,24 @@ evidence chunks from a knowledge base. Decide:
 Quote the exact supporting/contradicting chunk text as `quote`, and its title as `source`.
 For INSUFFICIENT, leave `source` and `quote` null."""
 
+VERDICT_PROMPT_V2 = """You are a fact-checker. You're given a claim and a set of retrieved
+evidence chunks from a knowledge base.
+
+Before deciding, work through it step by step in `reasoning`: which chunk (if any) covers
+the same entity and metric as the claim, what value or fact it states, and how that
+compares to the claim's value. Then decide:
+
+- VERIFIED: a chunk confirms the claim's entity, metric, and value (numbers can be rounded).
+- REFUTED: a chunk covers the same entity and metric, but with a different value or fact.
+- INSUFFICIENT: no chunk actually covers this entity + metric — don't guess from a
+  loosely related chunk.
+
+Quote the exact supporting/contradicting chunk text as `quote`, and its title as `source`.
+For INSUFFICIENT, leave `source` and `quote` null."""
+
 
 class Verdict(BaseModel):
+    reasoning: str = Field(description="Brief step-by-step reasoning, before deciding the verdict")
     verdict: Literal["VERIFIED", "REFUTED", "INSUFFICIENT"]
     source: str | None = Field(description="Title of the chunk that decided the verdict, or null")
     quote: str | None = Field(description="Verbatim chunk text supporting the verdict, or null")
@@ -42,7 +58,12 @@ def verify_claim(
     chunks = rerank(claim.text, chunks, top_k=rerank_k)
 
     if not chunks:
-        return Verdict(verdict="INSUFFICIENT", source=None, quote=None)
+        return Verdict(
+            reasoning="No chunks retrieved from the knowledge base for this claim.",
+            verdict="INSUFFICIENT",
+            source=None,
+            quote=None,
+        )
 
     evidence = "\n\n".join(f"[{c['title']}]\n{c['content']}" for c in chunks)
     user_message = (
