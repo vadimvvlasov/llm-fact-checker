@@ -48,3 +48,5 @@ LLM_MODEL = os.getenv("LLM_MODEL") or LLM_PROVIDERS[LLM_PROVIDER]["default_model
 
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 EMBEDDING_DIM = 384
+
+RERANK_MODEL = os.getenv("RERANK_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
