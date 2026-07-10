@@ -17,14 +17,34 @@ DATABASE_URL = (
 
 FRED_API_KEY = os.getenv("FRED_API_KEY", "")
 
-# LLM_PROVIDER=openrouter (default, needs OPENROUTER_API_KEY) or ollama (local, no key)
+# LLM_PROVIDER selects an entry below (default: openrouter). Add a new provider
+# by adding one entry here — no other file needs to change.
+LLM_PROVIDERS = {
+    "openrouter": {
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key": os.getenv("OPENROUTER_API_KEY", ""),
+        "default_model": "tencent/hy3:free",
+        "timeout": 30,
+        "max_retries": 1,
+    },
+    "groq": {
+        "base_url": "https://api.groq.com/openai/v1",
+        "api_key": os.getenv("GROQ_API_KEY", ""),
+        "default_model": "qwen/qwen3.6-27b",
+        "timeout": 30,
+        "max_retries": 1,
+    },
+    "ollama": {
+        "base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
+        "api_key": "ollama",  # ollama's OpenAI-compat endpoint ignores the key but the client requires one
+        "default_model": "ornith:latest",
+        "timeout": 180,  # local CPU cold start (~2 min)
+        "max_retries": 1,
+    },
+}
+
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
-LLM_MODEL = os.getenv(
-    "LLM_MODEL", "tencent/hy3:free" if LLM_PROVIDER == "openrouter" else "ornith:latest"
-)
+LLM_MODEL = os.getenv("LLM_MODEL") or LLM_PROVIDERS[LLM_PROVIDER]["default_model"]
 
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 EMBEDDING_DIM = 384
