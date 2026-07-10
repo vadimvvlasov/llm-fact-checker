@@ -44,6 +44,10 @@ dependency).
       `hybrid_rrf` hit_rate@5=100% MRR@5=0.954 → `hybrid_rerank`
       hit_rate@3=100% MRR@3=1.000. Narrower top-3 and a better ranking, not
       just a smaller list.
+- [x] Wire `rerank()` into `verify_claim()` (`src/verifier.py`) — retrieves
+      top-5 via `hybrid_search`, reranks to top-3, judges on the reranked
+      set. Verified live (Apple revenue claim -> VERIFIED, correct
+      source/quote).
 - [ ] Wire `rerank()` into `verify_claim()` (`src/verifier.py`)
 - [ ] RAGAS + LLM-as-judge evaluation (baseline vs hybrid vs hybrid+rerank)
 - [ ] Query rewriting (LLM rephrases the claim before retrieval)

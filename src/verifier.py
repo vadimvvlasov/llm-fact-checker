@@ -13,6 +13,7 @@ from src.claim_extractor import Claim
 from src.db import get_conn, hybrid_search
 from src.embeddings import embed_texts
 from src.llm import invoke_structured
+from src.rerank import rerank
 
 VERDICT_PROMPT_V1 = """You are a fact-checker. You're given a claim and a set of retrieved
 evidence chunks from a knowledge base. Decide:
@@ -32,10 +33,13 @@ class Verdict(BaseModel):
     quote: str | None = Field(description="Verbatim chunk text supporting the verdict, or null")
 
 
-def verify_claim(claim: Claim, prompt: str = VERDICT_PROMPT_V1, top_k: int = 5) -> Verdict:
+def verify_claim(
+    claim: Claim, prompt: str = VERDICT_PROMPT_V1, top_k: int = 5, rerank_k: int = 3
+) -> Verdict:
     with get_conn() as conn:
         embedding = embed_texts([claim.text])[0]
         chunks = hybrid_search(conn, claim.text, embedding, top_k=top_k)
+    chunks = rerank(claim.text, chunks, top_k=rerank_k)
 
     if not chunks:
         return Verdict(verdict="INSUFFICIENT", source=None, quote=None)
