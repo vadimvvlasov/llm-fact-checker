@@ -29,15 +29,16 @@ FY2025 was $416.161B"), not opinions or forward-looking statements.
 Open design decisions:
 
 - **Model:** OpenRouter by default, not OpenAI directly — `OPENROUTER_API_KEY` +
-  `LLM_MODEL=tencent/hy3:free` in `.env.example` (same pattern as
-  `llm-zoomcamp-hw2`: OpenAI-compatible client,
-  `base_url="https://openrouter.ai/api/v1"`). Free-tier model, $0 cost —
-  fits a capstone with no LLM budget. Originally tried
-  `nvidia/nemotron-3-ultra-550b-a55b:free`, but that model's provider was
-  returning `DEGRADED function cannot be invoked` on every call (confirmed
-  with a bare `openai` client too, not a code bug) — swapped to
-  `tencent/hy3:free`, verified working with structured output via
-  `ChatOpenAI(...).with_structured_output(...)`.
+  free-tier model (current default lives in `LLM_PROVIDERS["openrouter"]["default_model"]`,
+  `src/config.py` — don't hardcode a model name here, it's been swapped
+  more than once) (same pattern as `llm-zoomcamp-hw2`: OpenAI-compatible
+  client, `base_url="https://openrouter.ai/api/v1"`). $0 cost — fits a
+  capstone with no LLM budget. Two earlier defaults were dropped for
+  provider-side reasons, not code bugs: `nvidia/nemotron-3-ultra-550b-a55b:free`
+  returned `DEGRADED function cannot be invoked` on every call (confirmed
+  with a bare `openai` client too); `tencent/hy3:free` worked fine and was
+  later swapped for the current default. Whichever model is live, verified
+  working with structured output via `ChatOpenAI(...).with_structured_output(...)`.
 - **Local fallback:** `LLM_PROVIDER=ollama` (`src/config.py`) switches to a
   local Ollama model (`ornith:latest`, `base_url=http://localhost:11434/v1`,
   dummy `api_key`) — no API key, no rate limits, works offline. Verified
@@ -192,8 +193,8 @@ Re-runs Phase 1 ingestion on a schedule so the KB doesn't go stale.
 
 - [x] Add `langchain`, `langchain-openai` to `pyproject.toml`
 - [x] Claim extractor module (`src/claim_extractor.py`) with structured output —
-      verified against both OpenRouter (`tencent/hy3:free`) and local Ollama
-      (`ornith:latest`)
+      verified against both OpenRouter (free-tier model, see `src/config.py`)
+      and local Ollama (`ornith:latest`)
 - [x] Verdict logic (LLM-as-judge first pass) wired to `hybrid_search`
       (`src/verifier.py`) — verified against a VERIFIED/REFUTED/INSUFFICIENT
       case from each bucket of `data/eval_claims.csv`. Prompt passed as an

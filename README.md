@@ -85,7 +85,7 @@ Wraps the project up for review.
 | Storage | Postgres 16 + [pgvector](https://github.com/pgvector/pgvector) | one database for raw staging tables and the vector store — no separate vector DB |
 | Embeddings | [sentence-transformers](https://www.sbert.net/) (`all-MiniLM-L6-v2`, 384-dim) | local, free, no API cost — good enough for MVP-scale retrieval |
 | Retrieval | pgvector HNSW + Postgres full-text (`tsvector`), fused with RRF | implemented in `src/db.py`, benchmarked in `eval/compare_retrieval.py`; reranker still open (Phase 3) |
-| RAG chain | LangChain | claim extraction (`src/claim_extractor.py`) + verifier (`src/verifier.py`), via OpenRouter (`tencent/hy3:free`) — $0 LLM cost |
+| RAG chain | LangChain | claim extraction (`src/claim_extractor.py`) + verifier (`src/verifier.py`), via OpenRouter free tier (model in `src/config.py`, swapped more than once when a free model degrades) — $0 LLM cost |
 | Orchestration | Airflow (`dags/fact_checker_dag.py`) | separate `airflow` service (`Dockerfile.airflow`), scheduled daily ingestion so the KB doesn't go stale |
 | Evaluation | RAGAS + LLM-as-judge (planned, Phase 3) | baseline vs hybrid vs hybrid+rerank comparison — hit_rate/MRR harness already in `eval/compare_retrieval.py`, RAGAS not wired yet |
 | Monitoring | Langfuse (planned, Phase 4) | latency/cost/feedback dashboards |
