@@ -44,6 +44,12 @@ services:
       POSTGRES_HOST: postgres
       PYTHONPATH: /opt/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      # image's own /entrypoint (runs for any command, including `standalone`)
+      # creates/resets this admin user from these vars before exec'ing.
+      _AIRFLOW_DB_MIGRATE: "true"
+      _AIRFLOW_WWW_USER_CREATE: "true"
+      _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_ADMIN_USER:-admin}
+      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:-airflow}
     volumes:
       - airflow_home:/opt/airflow
       - ./dags:/opt/airflow/dags
