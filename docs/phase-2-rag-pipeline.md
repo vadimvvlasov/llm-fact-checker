@@ -174,8 +174,14 @@ Re-runs Phase 1 ingestion on a schedule so the KB doesn't go stale.
   (dlt → Postgres, load package `LOADED`, task `SUCCESS`).
 - **Not production-grade, by choice:** `standalone` prints Airflow's own
   warning — SQLite metadata DB + SequentialExecutor are dev/test only.
-  Fine for a capstone (single DAG, no concurrency needs); intentionally not
-  fixed now. **Path to production**, if this ever needs to run for real:
+  Concretely: `standalone_command.py` detects `sqlite` in
+  `sql_alchemy_conn` and force-sets `AIRFLOW__CORE__EXECUTOR=SequentialExecutor`
+  (source-confirmed) — this serializes *all* tasks in the instance, so the
+  4 `fetch_*` tasks run one at a time even though they're independent in
+  the DAG graph. Fine for a capstone (4 short API calls, seconds of
+  difference); intentionally not fixed now. **Path to production**, if this
+  ever needs to run for real (also unlocks the 4 fetch tasks running in
+  parallel, not just proper HA):
   point `AIRFLOW__DATABASE__SQL_ALCHEMY_CONN` at a Postgres database (a
   second DB in the existing `postgres` service, or its own service) and set
   `AIRFLOW__CORE__EXECUTOR=LocalExecutor`; replace `command: standalone` in
