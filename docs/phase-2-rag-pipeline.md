@@ -133,20 +133,58 @@ Worth tightening as part of Phase 3's prompt-optimization backlog item
 
 ## 4. Orchestration — Airflow DAG
 
+![alt text](image.png)
+
 Re-runs Phase 1 ingestion on a schedule so the KB doesn't go stale.
 
-- DAG re-runs the same 4 `ingest.fetch_*` modules + `ingest.build_vector_store`,
-  daily.
-- `build_vector_store.run()` already does a full truncate-and-rebuild (fixed
-  2026-07-07, see [Phase 1 doc](phase-1-ingestion.md)) — safe to schedule as
-  a full rebuild. No incremental upsert exists; revisit only if the daily
-  full-rebuild cost becomes a problem in practice.
-- Airflow itself isn't in `pyproject.toml`/`docker-compose.yml` yet — needs
-  its own service (webserver + scheduler) added to compose.
+- **Input:** nothing but the `@daily` schedule trigger + secrets from `.env`
+  (`FRED_API_KEY`, etc.) + whatever's already in the `*_raw` Postgres
+  schemas. Each `ingest.fetch_*` dlt resource is `write_disposition="merge"`
+  on its own primary key, so re-running a fetch is idempotent.
+- **Output:** refreshed `wikipedia_raw` / `worldbank_raw` / `fred_raw` /
+  `secedgar_raw` schemas, then a full truncate-and-rebuild of the derived
+  `documents` / `document_chunks` vector store that `src/db.py`'s hybrid
+  search reads from.
+- **DAG shape** (`dags/fact_checker_dag.py`): 4 independent `fetch_*`
+  `PythonOperator` tasks (one per source, no dependency between them) →
+  `rebuild_vector_store` downstream of all four, since
+  `build_vector_store.run()` re-reads every `*_raw` table from scratch on
+  each run (full rebuild, fixed 2026-07-07, see
+  [Phase 1 doc](phase-1-ingestion.md) — no incremental upsert exists yet).
+- **Design principles:** the DAG is pure orchestration — it imports each
+  ingest module's existing `run()` entrypoint and doesn't reimplement any
+  fetch/chunk/embed logic (single responsibility stays in
+  `ingest/fetch_*.py` / `ingest/build_vector_store.py`). Adding a new
+  source later means one new `ingest/fetch_*.py` + one new task; no
+  existing task changes (open/closed). The DAG depends only on the stable
+  `run()` interface each module already exposes, not on dlt/psycopg2
+  internals (dependency inversion).
+- **Runtime:** separate `airflow` service in `docker-compose.yml`
+  (`Dockerfile.airflow`, `apache/airflow:2.10.5-python3.11` +
+  `requirements-airflow.txt` — just the ingestion deps: dlt, psycopg2,
+  pgvector, sentence-transformers, requests, python-dotenv; deliberately
+  *not* langchain/ragas/fastapi, since the DAG never touches the RAG/eval/
+  API layers). `standalone` mode (single container, SQLite metadata db) —
+  enough for a capstone, avoids a second Postgres just for Airflow's own
+  state. `dags/`, `src/`, `ingest/` are bind-mounted so local edits apply
+  without a rebuild.
+- **Verified:** `airflow dags list` shows `fact_checker_daily_ingestion`
+  with no import errors; `airflow tasks list` shows all 5 tasks; a real
+  `airflow tasks test ... fetch_wikipedia` run completed end-to-end
+  (dlt → Postgres, load package `LOADED`, task `SUCCESS`).
+- **Not production-grade, by choice:** `standalone` prints Airflow's own
+  warning — SQLite metadata DB + SequentialExecutor are dev/test only.
+  Fine for a capstone (single DAG, no concurrency needs); intentionally not
+  fixed now. **Path to production**, if this ever needs to run for real:
+  point `AIRFLOW__DATABASE__SQL_ALCHEMY_CONN` at a Postgres database (a
+  second DB in the existing `postgres` service, or its own service) and set
+  `AIRFLOW__CORE__EXECUTOR=LocalExecutor`; replace `command: standalone` in
+  `docker-compose.yml` with `airflow db init` + separate
+  webserver/scheduler processes (or services).
 
 ## Task breakdown
 
-- [x] Add `langchain`, `langchain-openai` to `pyproject.toml` (`apache-airflow` still needed)
+- [x] Add `langchain`, `langchain-openai` to `pyproject.toml`
 - [x] Claim extractor module (`src/claim_extractor.py`) with structured output —
       verified against both OpenRouter (`tencent/hy3:free`) and local Ollama
       (`ornith:latest`)
@@ -158,7 +196,10 @@ Re-runs Phase 1 ingestion on a schedule so the KB doesn't go stale.
 - [x] `POST /verify` in `src/api.py` — tested end-to-end against a live
       server, 3/3 verdicts correct (source/quote null on the REFUTED case
       is a known rough edge, see §3)
-- [ ] Airflow service in `docker-compose.yml` + DAG file
+- [x] Airflow service (`Dockerfile.airflow`, `requirements-airflow.txt`,
+      `docker-compose.yml`) + DAG file (`dags/fact_checker_dag.py`) — built,
+      smoke-tested (`dags list`, `tasks list`, `tasks test fetch_wikipedia`
+      all green), 2026-07-11
 - [ ] Manual smoke test against a few `data/eval_claims.csv` rows before
       Phase 3 runs the full RAGAS evaluation
 
