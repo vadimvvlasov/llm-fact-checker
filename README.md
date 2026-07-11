@@ -34,15 +34,15 @@ Builds the knowledge base. The foundation for every later phase.
 
 Details: [Phase 1 — Ingestion](docs/phase-1-ingestion.md). Step-by-step tutorial: [notebooks/phase1_ingestion.ipynb](notebooks/phase1_ingestion.ipynb).
 
-### Phase 2 — RAG Pipeline + Orchestration 🚧 in progress
+### Phase 2 — RAG Pipeline + Orchestration ✅ done
 
 Turns report text into verified claims, and keeps the knowledge base fresh on a schedule.
 
 - **Input:** raw report text + the Phase 1 knowledge base.
-- **What it does:** an LLM (LangChain) extracts factual claims from the text. A vector-search RAG chain retrieves supporting evidence per claim. An Airflow DAG re-runs ingestion daily so the knowledge base doesn't go stale.
+- **What it does:** an LLM (LangChain) extracts factual claims from the text. A vector-search RAG chain retrieves supporting evidence per claim. An Airflow DAG (`dags/fact_checker_dag.py`) re-runs ingestion daily so the knowledge base doesn't go stale.
 - **Output:** `POST /verify` endpoint → a verdict per claim — `VERIFIED` / `REFUTED` / `INSUFFICIENT`, with the matched source quote.
 
-Details: [Phase 2 — RAG Pipeline + Orchestration](docs/phase-2-rag-pipeline.md) (in progress — claim extractor + verdict logic + `POST /verify` done, Airflow DAG not started). Walkthrough: [notebooks/phase2_rag_pipeline.ipynb](notebooks/phase2_rag_pipeline.ipynb).
+Details: [Phase 2 — RAG Pipeline + Orchestration](docs/phase-2-rag-pipeline.md). Walkthrough: [notebooks/phase2_rag_pipeline.ipynb](notebooks/phase2_rag_pipeline.ipynb).
 
 ### Phase 3 — Hybrid Search + Evaluation 🚧 in progress
 
@@ -85,8 +85,8 @@ Wraps the project up for review.
 | Storage | Postgres 16 + [pgvector](https://github.com/pgvector/pgvector) | one database for raw staging tables and the vector store — no separate vector DB |
 | Embeddings | [sentence-transformers](https://www.sbert.net/) (`all-MiniLM-L6-v2`, 384-dim) | local, free, no API cost — good enough for MVP-scale retrieval |
 | Retrieval | pgvector HNSW + Postgres full-text (`tsvector`), fused with RRF | implemented in `src/db.py`, benchmarked in `eval/compare_retrieval.py`; reranker still open (Phase 3) |
-| RAG chain | LangChain (planned, Phase 2) | claim extraction + retrieval chain, via OpenRouter (`tencent/hy3:free`) — $0 LLM cost |
-| Orchestration | Airflow (planned, Phase 2) | scheduled daily ingestion so the KB doesn't go stale |
+| RAG chain | LangChain | claim extraction (`src/claim_extractor.py`) + verifier (`src/verifier.py`), via OpenRouter (`tencent/hy3:free`) — $0 LLM cost |
+| Orchestration | Airflow (`dags/fact_checker_dag.py`) | separate `airflow` service (`Dockerfile.airflow`), scheduled daily ingestion so the KB doesn't go stale |
 | Evaluation | RAGAS + LLM-as-judge (planned, Phase 3) | baseline vs hybrid vs hybrid+rerank comparison — hit_rate/MRR harness already in `eval/compare_retrieval.py`, RAGAS not wired yet |
 | Monitoring | Langfuse (planned, Phase 4) | latency/cost/feedback dashboards |
 | UI | Streamlit (planned, Phase 4) | claim input → verdict cards |
@@ -108,6 +108,8 @@ uv run python -m ingest.fetch_secedgar
 uv run python -m ingest.build_vector_store
 uv run uvicorn src.api:app --reload
 ```
+
+To run ingestion on a schedule instead of manually: `docker compose up -d airflow` (builds `Dockerfile.airflow` on first run), then check `http://localhost:8080` or `docker exec fact-checker-airflow airflow dags list`. The DAG (`fact_checker_daily_ingestion`) re-runs the 4 `ingest.fetch_*` steps + `ingest.build_vector_store` daily.
 
 ## Docs
 
