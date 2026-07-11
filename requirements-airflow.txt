@@ -1,0 +1,9 @@
+# Runtime deps the DAG's PythonOperator tasks need to import ingest.* / src.*.
+# Deliberately NOT the full app (no langchain/ragas/fastapi) — the DAG only
+# orchestrates ingestion + vector store rebuild, not the RAG/eval/API layers.
+dlt[postgres]>=1.4.0
+psycopg2-binary>=2.9.12
+pgvector>=0.3.6
+sentence-transformers>=5.5.0
+requests>=2.32.0
+python-dotenv>=1.2.2

@@ -30,5 +30,29 @@ services:
     ports:
       - "8000:8000"
 
+  airflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: fact-checker-airflow
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      PYTHONPATH: /opt/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    volumes:
+      - airflow_home:/opt/airflow
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - ./ingest:/opt/airflow/ingest
+    ports:
+      - "8080:8080"
+    command: standalone
+
 volumes:
   pgdata:
+  airflow_home:
