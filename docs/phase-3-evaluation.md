@@ -1,7 +1,10 @@
 # Phase 3 — Hybrid Search + Evaluation
 
-**Status: in progress.** Reranker built and demoed
-(`notebooks/phase3_evaluation.ipynb`); RAGAS eval and query rewriting still open.
+**Status: done, mixed result on query rewriting.** Reranker, RAGAS (both
+prompts, full 76-claim set), and query rewriting are all built and
+evaluated. V1 vs V2 is resolved (V1 wins). Query rewriting is implemented
+and evaluated, but the numbers don't show a clear win — see "Query
+rewriting" below before treating it as a finished success.
 
 ## Goal
 
@@ -64,11 +67,15 @@ dependency).
       set. Verified live (Apple revenue claim -> VERIFIED, correct
       source/quote).
 - [x] Expand `data/eval_claims.csv` — see "Eval dataset expansion" below
-- [~] RAGAS + LLM-as-judge evaluation, 2 prompts — see "RAGAS evaluation" below.
-      Pipeline built and works; `VERDICT_PROMPT_V1` has real numbers,
-      `VERDICT_PROMPT_V2` comparison incomplete (blocked by a free-tier daily
-      quota, not a bug)
-- [ ] Query rewriting (LLM rephrases the claim before retrieval)
+- [x] RAGAS + LLM-as-judge evaluation, 2 prompts — see "RAGAS evaluation"
+      below. Full 76-claim set, both prompts, run locally
+      (`granite4.1:3b` via Ollama, no quota ceiling). `VERDICT_PROMPT_V1`
+      wins; it's already `verifier.py`'s default.
+- [x] Query rewriting (`src/query_rewrite.py`, LLM rephrases the claim
+      before retrieval) — implemented, wired into `verify_claim()`,
+      evaluated in `notebooks/phase3_evaluation.ipynb`. Result: hit_rate
+      unchanged, MRR worse, one targeted collision case still resolves to
+      the wrong source. See "Query rewriting" below.
 
 ## Eval dataset expansion
 
@@ -94,11 +101,9 @@ The 5 remaining misses are all FRED claims, and they share one cause: a
 **source collision**, not a vocabulary problem. "US GDP in the third quarter
 of 2019..." retrieves World Bank's "GDP (current US\$) — United States"
 instead of FRED's `GDP` series chunk — same concept, different source,
-close enough lexically that hybrid search picks the wrong one. This is
-concrete evidence for a next step, not a hypothetical: query rewriting (or
-the source-type hint already noted as backlog in
-[phase-2-rag-pipeline.md](phase-2-rag-pipeline.md)) has a real, measurable
-problem to solve here.
+close enough lexically that hybrid search picks the wrong one. Query
+rewriting targets exactly this — see "Query rewriting" below for whether it
+actually fixes it (short answer: not cleanly).
 
 ## RAGAS evaluation
 
@@ -130,42 +135,72 @@ deciding — the `reasoning`-before-score pattern from the
 [LLM Zoomcamp agent-evaluation lesson](https://github.com/DataTalksClub/llm-zoomcamp/blob/main/04-evaluation/lessons/14-agent-evaluation.md)).
 `Verdict.reasoning` is a required field either prompt uses.
 
-`eval/ragas_eval.py` runs both prompts across a sample of `eval_claims.csv`,
-scoring verdict accuracy (vs. `expected_verdict`) plus faithfulness/context
+`eval/ragas_eval.py` runs both prompts across `eval_claims.csv`, scoring
+verdict accuracy (vs. `expected_verdict`) plus faithfulness/context
 precision per claim, with per-claim try/except so one bad claim doesn't
 crash the whole run (logs it and moves on instead).
 
-**Results (sample of 10, seed=42), partial on two providers:**
+**Results, full 76-claim set, both prompts, run locally
+(`granite4.1:3b` via Ollama — no free-tier quota, no sampling needed):**
 
-| Prompt | Provider | Accuracy | Faithfulness | Context precision |
-|---|---|---|---|---|
-| `VERDICT_PROMPT_V1` | Groq `openai/gpt-oss-20b` | 90% (9/10) | 0.905 | 0.929 |
-| `VERDICT_PROMPT_V1` | OpenRouter `poolside/laguna-xs-2.1:free` | 100% (5/5 before quota hit) | 0.792 | 1.000 |
-| `VERDICT_PROMPT_V2` | both | incomplete (≤1/10 scored either run) | — | — |
+| Prompt | Accuracy | Faithfulness* | Context precision |
+|---|---|---|---|
+| `VERDICT_PROMPT_V1` | **79% (60/76)** | 0.748 | **0.669** |
+| `VERDICT_PROMPT_V2` | 74% (56/76) | 0.747 | 0.587 |
 
-**Real constraint, not a code bug — confirmed on two independent free tiers:**
+*Recomputed after fixing an aggregation bug found while reading these
+results: RAGAS's `Faithfulness` metric returns `NaN` (not `None`) for a
+verdict with no extractable factual statement — mostly `INSUFFICIENT`
+verdicts — and `eval/ragas_eval.py`'s original averaging summed `NaN`
+straight in, silently turning the *whole* average into `NaN` instead of
+dropping just those claims. Fixed to drop `NaN` the same way it already
+dropped `None` (3 claims dropped for V1, 10 for V2 — V2 producing more
+`INSUFFICIENT` verdicts is also most of why its accuracy is lower).
 
-- Groq caps `openai/gpt-oss-20b` at 8000 tokens/minute *and* 200,000
-  tokens/day (TPD). Three LLM calls per claim (judge + faithfulness +
-  context precision) meant V1's 10-claim run alone used 198,191/200,000 of
-  the day's quota — V2, run right after, got blocked almost immediately.
-- OpenRouter's free tier caps at 50 requests/day *per account*. A fresh
-  account (new API key) hit the same wall mid-way through V1 — the reset
-  timestamp OpenRouter returns is a fixed daily boundary, not a per-account
-  clock, so "make a new account" buys a few extra requests, not a full
-  reset.
-- Both failures surfaced cleanly (skipped-and-logged per claim, not crashed
-  or silently averaged) specifically because `eval/ragas_eval.py` wraps each
-  claim's scoring in its own try/except.
+**V1 wins** — higher accuracy, higher context precision, tied on
+faithfulness. `verifier.py`'s default (`VERDICT_PROMPT_V1`) is already the
+right call; no code change needed. Full transcript and per-claim breakdown:
+`notebooks/phase3_evaluation.ipynb`, Stage 3.
 
-Back-of-envelope: the full comparison needs 76 claims × 2 prompts × 3 LLM
-calls ≈ 456 requests — past what either provider's free tier gives in a
-day. This needs a paid tier (or spreading the run across several days) to
-actually finish, not a code fix.
+## Query rewriting
 
-**Directionally, both partial runs agree:** high accuracy (90-100% on this
-sample), high faithfulness (0.79-0.91), near-perfect context precision
-(0.93-1.0) for `VERDICT_PROMPT_V1`. Not enough data to call a winner between
-V1 and V2 — that's the real open item, not the pipeline itself.
+`src/query_rewrite.py`: an LLM rewrites the claim into a search query before
+retrieval, naming which of the four source types (Wikipedia / World Bank /
+FRED / SEC EDGAR) the claim most plausibly belongs to when ambiguous — aimed
+directly at the FRED-vs-World-Bank source collision documented above.
+Wired into `verify_claim()` by default.
+
+**Evaluated (`notebooks/phase3_evaluation.ipynb`, Stage 1), on the same
+68-claim set, locally (`granite4.1:3b`):**
+
+| Method | hit_rate | MRR |
+|---|---|---|
+| `hybrid_rrf` (no rewrite) | 93% (63/68) | 0.873 |
+| `hybrid_rewrite` | 93% (63/68) | **0.765** |
+| `hybrid_rerank` (no rewrite) | 93% (63/68) | 0.919 |
+| `hybrid_rerank_rewrite` | 93% (63/68) | **0.909** |
+
+**Not a clean win.** Hit_rate is exactly flat — rewriting didn't add a
+single new hit — and MRR is worse in both variants: ranking quality dropped
+even though hybrid_rrf/hybrid_rerank numbers were measured at 6846 chunks
+vs. 6850 live now, a drift too small to explain a same-direction regression
+on both metrics.
+
+A single targeted check on the exact collision case ("US GDP in the third
+quarter of 2019...") confirms why: rewriting does get FRED's chunk into the
+candidate set (fixes *recall*), but the cross-encoder reranker still ranked
+World Bank's chunk above it, and `verify_claim()` cited World Bank — wrong
+source, even though the verdict itself (`VERIFIED`) was still correct.
+Rewriting fixes recall, not ranking, and ranking is what the final citation
+depends on.
+
+**Open question, not resolved here:** whether query rewriting should stay
+`verify_claim()`'s silent default given no measured retrieval benefit. It's
+implemented and evaluated either way (satisfies the rubric's Best Practices
+checklist item), but a systematic Stage 2 check (5 known-miss claims,
+with/without rewriting) hasn't actually run yet — the notebook's
+placeholder claim-id list was never filled in with real ids, so that check
+found 0 matching claims and produced no signal. That's the next concrete
+step before deciding either way.
 
 [← Back to README](../README.md)
