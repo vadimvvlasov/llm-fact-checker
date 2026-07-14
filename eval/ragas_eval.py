@@ -12,6 +12,7 @@ wall-clock time. Pass sample_size=None for the full set.
 
 import asyncio
 import csv
+import math
 import random
 from pathlib import Path
 
@@ -113,9 +114,16 @@ async def run_prompt(name: str, prompt: str, claims: list[dict]) -> None:
 
     n = len(results)
     accuracy = sum(r["correct"] for r in results) / n
-    scored = [r for r in results if r["faithfulness"] is not None]
-    avg_faithfulness = sum(r["faithfulness"] for r in scored) / len(scored) if scored else float("nan")
-    avg_context_precision = sum(r["context_precision"] for r in scored) / len(scored) if scored else float("nan")
+    # faithfulness/context_precision are averaged separately, and NaN values are
+    # dropped, not just None: RAGAS's Faithfulness metric returns NaN (not None)
+    # when a verdict has no extractable factual statements (e.g. most INSUFFICIENT
+    # verdicts) -- summing a NaN into the average silently makes the whole average
+    # NaN, hiding every other claim's real score.
+    faith_scored = [r["faithfulness"] for r in results if r["faithfulness"] is not None and not math.isnan(r["faithfulness"])]
+    ctx_scored = [r["context_precision"] for r in results if r["context_precision"] is not None and not math.isnan(r["context_precision"])]
+    avg_faithfulness = sum(faith_scored) / len(faith_scored) if faith_scored else float("nan")
+    avg_context_precision = sum(ctx_scored) / len(ctx_scored) if ctx_scored else float("nan")
+    scored = faith_scored  # only used below for the skip-count note
 
     skip_note = f", {skipped} skipped (verify_claim failed)" if skipped else ""
     print(f"{name}: accuracy={accuracy:.0%} ({sum(r['correct'] for r in results)}/{n})   "
