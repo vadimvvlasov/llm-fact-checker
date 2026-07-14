@@ -23,6 +23,7 @@ from src.claim_extractor import Claim
 from src.config import LLM_MODEL, LLM_PROVIDER, LLM_PROVIDERS
 from src.db import get_conn, hybrid_search
 from src.embeddings import embed_texts
+from src.query_rewrite import rewrite_query
 from src.rerank import rerank
 from src.verifier import VERDICT_PROMPT_V1, VERDICT_PROMPT_V2, verify_claim
 
@@ -36,14 +37,17 @@ def load_claims() -> list[dict]:
         return list(csv.DictReader(f))
 
 
-def retrieve_contexts(claim_text: str) -> list[dict]:
-    """Same retrieve -> rerank path verify_claim() uses internally, kept separate here
-    so this script can hand the retrieved chunks to RAGAS (verify_claim only returns
-    the verdict, not the evidence it was judged against)."""
-    embedding = embed_texts([claim_text])[0]
+def retrieve_contexts(search_query: str) -> list[dict]:
+    """Same rewrite -> retrieve -> rerank path verify_claim() uses internally, kept
+    separate here so this script can hand the retrieved chunks to RAGAS (verify_claim
+    only returns the verdict, not the evidence it was judged against). Takes the
+    already-rewritten query, not the raw claim text — score_claim() rewrites once and
+    passes the same search_query to both this function and verify_claim(), so a claim
+    isn't rewritten twice (rewrite_query is itself an LLM call)."""
+    embedding = embed_texts([search_query])[0]
     with get_conn() as conn:
-        chunks = hybrid_search(conn, claim_text, embedding, top_k=5)
-    return rerank(claim_text, chunks, top_k=3)
+        chunks = hybrid_search(conn, search_query, embedding, top_k=5)
+    return rerank(search_query, chunks, top_k=3)
 
 
 def ragas_llm():
@@ -54,7 +58,7 @@ def ragas_llm():
     # calls within the same claim's scoring (verify + faithfulness + context_precision)
     # can hit a transient 429 even under budget overall — instructor's own tenacity
     # retry loop backs off and retries on this, but only if given retries to spend.
-    client = AsyncOpenAI(base_url=provider["base_url"], api_key=provider["api_key"], timeout=30, max_retries=5)
+    client = AsyncOpenAI(base_url=provider["base_url"], api_key=provider["api_key"], timeout=provider["timeout"], max_retries=5)
     # max_tokens: Groq's free tier caps at 8000 tokens/minute total (prompt + all
     # completions), so keep completions small there. Other providers don't have that
     # ceiling, but some free models ramble and truncate mid-generation at low limits
@@ -65,9 +69,10 @@ def ragas_llm():
 
 async def score_claim(row: dict, prompt: str, faithfulness: Faithfulness, context_precision: ContextPrecisionWithoutReference) -> dict | None:
     claim = Claim(text=row["claim"], entity="", metric="", value=None, date=None)
-    chunks = retrieve_contexts(claim.text)
+    search_query = rewrite_query(claim.text)
+    chunks = retrieve_contexts(search_query)
     try:
-        verdict = verify_claim(claim, prompt=prompt)
+        verdict = verify_claim(claim, prompt=prompt, search_query=search_query)
     except Exception as e:
         print(f"  [{row['id']}] SKIPPED — verify_claim failed: {str(e)[:150]}")
         return None
