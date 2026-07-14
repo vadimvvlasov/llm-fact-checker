@@ -15,6 +15,7 @@ from minsearch import Index
 
 from src.db import get_conn, fetch_all_chunks, text_search, vector_search, hybrid_search
 from src.embeddings import embed_texts
+from src.query_rewrite import rewrite_query
 from src.rerank import rerank
 
 EVAL_CSV = Path(__file__).resolve().parent.parent / "data" / "eval_claims.csv"
@@ -22,8 +23,14 @@ TOP_K = 5
 RERANK_K = 3  # matches verify_claim's real top-5 -> top-3 rerank width
 
 WB_CODE_TO_NAME = {
-    "US": "United States", "RU": "Russian Federation", "CN": "China", "DE": "Germany",
-    "GB": "United Kingdom", "BR": "Brazil", "IN": "India", "JP": "Japan",
+    "US": "United States",
+    "RU": "Russian Federation",
+    "CN": "China",
+    "DE": "Germany",
+    "GB": "United Kingdom",
+    "BR": "Brazil",
+    "IN": "India",
+    "JP": "Japan",
 }
 WB_LABEL_TO_CODE = {
     "GDP": "NY.GDP.MKTP.CD",
@@ -57,10 +64,9 @@ def is_relevant(row: dict, source_hint: str) -> bool:
     if source == "worldbank":
         _, code, indicator = source_hint.split(":", 2)
         indicator = indicator.split(" (")[0].strip()
-        return (
-            meta.get("country") == WB_CODE_TO_NAME.get(code)
-            and meta.get("indicator_code") == WB_LABEL_TO_CODE.get(indicator)
-        )
+        return meta.get("country") == WB_CODE_TO_NAME.get(code) and meta.get(
+            "indicator_code"
+        ) == WB_LABEL_TO_CODE.get(indicator)
 
     if source == "wikipedia":
         topic = source_hint.split(":", 1)[1].split(" (")[0].strip()
@@ -90,7 +96,9 @@ def score(name: str, claims: list[dict], retrieve_fn, k: int = TOP_K) -> None:
             hits += 1
             rr_sum += 1.0 / rank
     n = len(claims)
-    print(f"{name:>13}: hit_rate@{k}={hits}/{n} ({hits / n:.0%})   MRR@{k}={rr_sum / n:.3f}")
+    print(
+        f"{name:>13}: hit_rate@{k}={hits}/{n} ({hits / n:.0%})   MRR@{k}={rr_sum / n:.3f}"
+    )
 
 
 def main():
@@ -104,7 +112,9 @@ def main():
     minsearch_index.fit(chunks)
 
     def minsearch_retrieve(query: str) -> list[dict]:
-        return minsearch_index.search(query, num_results=TOP_K, boost_dict={"title": 2.0})
+        return minsearch_index.search(
+            query, num_results=TOP_K, boost_dict={"title": 2.0}
+        )
 
     def pg_text_retrieve(query: str) -> list[dict]:
         with get_conn() as conn:
@@ -123,11 +133,31 @@ def main():
     def pg_hybrid_rerank_retrieve(query: str) -> list[dict]:
         return rerank(query, pg_hybrid_retrieve(query), top_k=RERANK_K)
 
+    # one rewrite call per claim, cached so hybrid_rewrite and hybrid_rerank_rewrite
+    # don't each pay for it separately
+    rewrite_cache: dict[str, str] = {}
+
+    def cached_rewrite(query: str) -> str:
+        if query not in rewrite_cache:
+            rewrite_cache[query] = rewrite_query(query)
+        return rewrite_cache[query]
+
+    def pg_hybrid_rewrite_retrieve(query: str) -> list[dict]:
+        return pg_hybrid_retrieve(cached_rewrite(query))
+
+    def pg_hybrid_rerank_rewrite_retrieve(query: str) -> list[dict]:
+        rewritten = cached_rewrite(query)
+        return rerank(rewritten, pg_hybrid_retrieve(rewritten), top_k=RERANK_K)
+
     score("minsearch", claims, minsearch_retrieve)
     score("pg_text", claims, pg_text_retrieve)
     score("pg_vector", claims, pg_vector_retrieve)
     score("hybrid_rrf", claims, pg_hybrid_retrieve)
     score("hybrid_rerank", claims, pg_hybrid_rerank_retrieve, k=RERANK_K)
+    score("hybrid_rewrite", claims, pg_hybrid_rewrite_retrieve)
+    score(
+        "hybrid_rerank_rewrite", claims, pg_hybrid_rerank_rewrite_retrieve, k=RERANK_K
+    )
 
 
 if __name__ == "__main__":
