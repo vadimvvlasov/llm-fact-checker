@@ -13,6 +13,7 @@ from src.claim_extractor import Claim
 from src.db import get_conn, hybrid_search
 from src.embeddings import embed_texts
 from src.llm import invoke_structured
+from src.query_rewrite import rewrite_query
 from src.rerank import rerank
 
 VERDICT_PROMPT_V1 = """You are a fact-checker. You're given a claim and a set of retrieved
@@ -50,12 +51,20 @@ class Verdict(BaseModel):
 
 
 def verify_claim(
-    claim: Claim, prompt: str = VERDICT_PROMPT_V1, top_k: int = 5, rerank_k: int = 3
+    claim: Claim,
+    prompt: str = VERDICT_PROMPT_V1,
+    top_k: int = 5,
+    rerank_k: int = 3,
+    search_query: str | None = None,
 ) -> Verdict:
+    """search_query: pass a precomputed rewrite_query(claim.text) result to skip
+    rewriting here — e.g. eval/ragas_eval.py needs the same rewritten query for both
+    retrieving RAGAS's evidence and for this call, and shouldn't pay for rewriting twice."""
+    search_query = search_query or rewrite_query(claim.text)
     with get_conn() as conn:
-        embedding = embed_texts([claim.text])[0]
-        chunks = hybrid_search(conn, claim.text, embedding, top_k=top_k)
-    chunks = rerank(claim.text, chunks, top_k=rerank_k)
+        embedding = embed_texts([search_query])[0]
+        chunks = hybrid_search(conn, search_query, embedding, top_k=top_k)
+    chunks = rerank(search_query, chunks, top_k=rerank_k)
 
     if not chunks:
         return Verdict(
