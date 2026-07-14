@@ -37,7 +37,7 @@ LLM_PROVIDERS = {
     "ollama": {
         "base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
         "api_key": "ollama",  # ollama's OpenAI-compat endpoint ignores the key but the client requires one
-        "default_model": "ornith:latest",
+        "default_model": "granite4.1:3b",
         "timeout": 180,  # local CPU cold start (~2 min)
         "max_retries": 1,
     },
