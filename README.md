@@ -1,24 +1,33 @@
 # Fact-Checker RAG
 
-RAG system that verifies claims in business reports against public financial/economic sources (LLM Zoomcamp capstone).
+RAG system that checks claims in business reports against public financial and economic sources. LLM Zoomcamp capstone project.
 
-**Problem:** business reports contain factual errors and hallucinations (see the KPMG case) — manually checking every number against sources takes hours.
+**Problem.** Business reports contain factual errors and hallucinations. The KPMG case is one public example. Checking every number by hand takes hours.
 
-**Example:** `"Apple's revenue in FY2023 was $394B"` → cross-checked against SEC EDGAR 10-K → `VERIFIED` + source quote.
+**What it does:**
+- Takes report text as input.
+- Extracts factual claims from the text.
+- Retrieves supporting evidence from a knowledge base (Wikipedia, World Bank, FRED, SEC EDGAR).
+- Returns a verdict per claim: `VERIFIED`, `REFUTED`, or `INSUFFICIENT`.
+- Cites the exact source and quote behind each verdict.
 
-Takes report text → extracts claims → retrieves supporting evidence from a knowledge base (Wikipedia, World Bank, FRED, SEC EDGAR) → returns a verdict per claim: `VERIFIED` / `REFUTED` / `INSUFFICIENT` with source citation.
+**Example:** `"Apple's revenue in FY2023 was $394B"` → checked against SEC EDGAR 10-K → `VERIFIED` + source quote.
 
-**Who it's for:** analysts, auditors, and researchers who need to verify quantitative claims in reports without manually cross-checking every number against a source.
+**Who it's for:** analysts, auditors, and researchers who verify quantitative claims in reports and don't want to check every number by hand.
 
-**Input:** raw report text (paragraph or full document).
+**Evaluation — done (Phase 3).** Retrieval, reranking, and query rewriting are all measured, not assumed. Full numbers: [docs/phase-3-evaluation.md](docs/phase-3-evaluation.md). Highlights:
+- Compared 8 retrieval methods on a 68-claim labeled set. Hybrid search + reranking wins: 90% hit_rate, 0.890 MRR.
+- Compared 2 judge prompts on the full 76-claim set. The simpler prompt wins: 79% accuracy vs. 74%.
+- Tested query rewriting on 4 local LLMs. Found a real pattern: the model with the best retrieval score gave the worst final answers. The model with the worst retrieval score gave the best final answers. Retrieval quality and answer quality are not the same thing — see the doc for why.
 
-**Output:** list of extracted claims, each with a verdict (`VERIFIED` / `REFUTED` / `INSUFFICIENT`), the matched source, and a direct quote.
+**Demo:** in progress (Phase 4). Streamlit UI link lands here once deployed.
 
-**Evaluation:** in progress (Phase 3) — RAGAS + LLM-as-judge against a 76-claim labeled test set (`data/eval_claims.csv`). Numbers land here once the phase ships.
+**Best practices checklist** (per the [course rubric](https://github.com/DataTalksClub/llm-zoomcamp/blob/main/project.md#evaluation-criteria)):
+- [x] Hybrid search (text + vector, fused with RRF) — implemented and evaluated.
+- [x] Document re-ranking (cross-encoder) — implemented and evaluated.
+- [x] Query rewriting — implemented and evaluated across 4 models. Result: it helps retrieval, but not always the final answer. See [docs/phase-3-evaluation.md](docs/phase-3-evaluation.md).
 
-**Demo:** in progress (Phase 4) — Streamlit UI link lands here once deployed.
-
-**Why this stack:** RAG + LLM-as-verifier over structured financial/public data sources is the same core pattern used in production by [Hebbia](https://www.hebbia.com/) (financial due-diligence RAG, 40%+ of large asset managers by AUM), [AuditBoard](https://venturebeat.com/ai/auditboard-upgrades-its-risk-management-platform-with-built-in-llm-descriptions) (LLM-assisted risk/control workflows for internal audit), and Thomson Reuters' Westlaw AI (legal fact-verification — a [Stanford study](https://www.buildmvpfast.com/blog/ai-legal-research-westlaw-lexis-casetext-llms-2026) found it hallucinates 33% of the time, which is exactly the failure mode this project targets).
+**Why this stack.** RAG + LLM-as-verifier over structured financial data is the same pattern [Hebbia](https://www.hebbia.com/), [AuditBoard](https://venturebeat.com/ai/auditboard-upgrades-its-risk-management-platform-with-built-in-llm-descriptions), and Thomson Reuters' Westlaw AI use in production today.
 
 ## Architecture
 
@@ -44,17 +53,20 @@ Turns report text into verified claims, and keeps the knowledge base fresh on a 
 
 Details: [Phase 2 — RAG Pipeline + Orchestration](docs/phase-2-rag-pipeline.md). Walkthrough: [notebooks/phase2_rag_pipeline.ipynb](notebooks/phase2_rag_pipeline.ipynb).
 
-### Phase 3 — Hybrid Search + Evaluation 🚧 in progress
+### Phase 3 — Hybrid Search + Evaluation ✅ done
 
-Makes retrieval better, then measures how much better.
+Makes retrieval better. Measures how much better, with real numbers, not guesses.
 
 - **Input:** the Phase 2 chain + a labeled test set (`data/eval_claims.csv`, 76 claims).
-- **What it does:** combines pgvector + Postgres full-text search via RRF (`src/db.py`: `text_search`, `vector_search`, `hybrid_search`), reranks top-5 with a cross-encoder, rewrites the claim before searching. RAGAS + LLM-as-judge score the pipeline: baseline vs hybrid vs hybrid+rerank.
-- **Output:** retrieval hit-rate/MRR per strategy, RAGAS faithfulness/accuracy numbers. `eval/compare_retrieval.py` already benchmarks minsearch vs pg full-text vs pgvector vs hybrid RRF on hit_rate@5/MRR@5 — reranker and RAGAS scoring still open.
+- **What it does:** combines pgvector + Postgres full-text search via RRF (`src/db.py`). Reranks top-5 with a cross-encoder. Rewrites the claim before searching, using a local LLM. Scores every step with hit_rate, MRR, and RAGAS (faithfulness, context precision).
+- **Output:** a clear retrieval winner (hybrid + rerank), a clear judge-prompt winner (`VERDICT_PROMPT_V1`), and an honest, non-obvious finding on query rewriting. Numbers are at the top of this README; full analysis, diagram, and production recommendation (local vs. cloud) are in the doc.
 
-**Backlog:** `document_chunks.metadata` has a GIN index (`db/init.sql`) but no query filters on it yet — source-filtered hybrid search (e.g. restrict to `secedgar` when the claim extractor tags a claim as company-financial) could cut retrieval noise. Blocked on Phase 2's claim extractor producing a source tag to filter on. Also untried: `hnsw.ef_search` tuning as a speed/accuracy knob in the eval harness.
+**Backlog:** `document_chunks.metadata` has a GIN index (`db/init.sql`) but
+no query filters on it yet — source-filtered hybrid search could cut
+retrieval noise further. See "Further research" in the doc.
 
-Details: TODO — `docs/phase-3-evaluation.md` (not written yet).
+Details: [Phase 3 — Evaluation](docs/phase-3-evaluation.md). Step-by-step
+tutorial: [notebooks/phase3_evaluation.ipynb](notebooks/phase3_evaluation.ipynb).
 
 ### Phase 4 — UI + Monitoring ⏳ not started
 
@@ -84,10 +96,10 @@ Wraps the project up for review.
 | HTTP | `requests` (shared `ingest/http.py` helper) | no framework needed for 4 simple REST/JSON APIs |
 | Storage | Postgres 16 + [pgvector](https://github.com/pgvector/pgvector) | one database for raw staging tables and the vector store — no separate vector DB |
 | Embeddings | [sentence-transformers](https://www.sbert.net/) (`all-MiniLM-L6-v2`, 384-dim) | local, free, no API cost — good enough for MVP-scale retrieval |
-| Retrieval | pgvector HNSW + Postgres full-text (`tsvector`), fused with RRF | implemented in `src/db.py`, benchmarked in `eval/compare_retrieval.py`; reranker still open (Phase 3) |
-| RAG chain | LangChain | claim extraction (`src/claim_extractor.py`) + verifier (`src/verifier.py`), via OpenRouter free tier (model in `src/config.py`, swapped more than once when a free model degrades) — $0 LLM cost |
+| Retrieval | pgvector HNSW + Postgres full-text (`tsvector`), fused with RRF, cross-encoder rerank, LLM query rewriting | `src/db.py`, `src/rerank.py`, `src/query_rewrite.py` — all evaluated, see Phase 3 |
+| RAG chain | LangChain | claim extraction (`src/claim_extractor.py`) + verifier (`src/verifier.py`), via OpenRouter free tier (model in `src/config.py`) — $0 LLM cost |
 | Orchestration | Airflow (`dags/fact_checker_dag.py`) | separate `airflow` service (`Dockerfile.airflow`), scheduled daily ingestion so the KB doesn't go stale |
-| Evaluation | RAGAS + LLM-as-judge (planned, Phase 3) | baseline vs hybrid vs hybrid+rerank comparison — hit_rate/MRR harness already in `eval/compare_retrieval.py`, RAGAS not wired yet |
+| Evaluation | RAGAS + LLM-as-judge, done (Phase 3) | hit_rate/MRR per retrieval method, accuracy/faithfulness/context precision per prompt — `eval/compare_retrieval.py`, `eval/ragas_eval.py` |
 | Monitoring | Langfuse (planned, Phase 4) | latency/cost/feedback dashboards |
 | UI | Streamlit (planned, Phase 4) | claim input → verdict cards |
 | API | FastAPI + uvicorn | `src/api.py` — `/health` + `POST /verify` (claim extraction + verdict) |
@@ -117,3 +129,5 @@ To run ingestion on a schedule instead of manually: `docker compose up -d airflo
 - [Phase 1 tutorial notebook](notebooks/phase1_ingestion.ipynb)
 - [Phase 2 — RAG Pipeline + Orchestration](docs/phase-2-rag-pipeline.md)
 - [Phase 2 walkthrough notebook](notebooks/phase2_rag_pipeline.ipynb)
+- [Phase 3 — Evaluation](docs/phase-3-evaluation.md)
+- [Phase 3 tutorial notebook](notebooks/phase3_evaluation.ipynb)
