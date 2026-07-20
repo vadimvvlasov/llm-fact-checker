@@ -30,6 +30,20 @@ services:
     ports:
       - "8000:8000"
 
+  ui:
+    build: .
+    container_name: fact-checker-ui
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+    ports:
+      - "8501:8501"
+    command: uv run streamlit run app.py --server.address 0.0.0.0
+
   airflow:
     build:
       context: .
