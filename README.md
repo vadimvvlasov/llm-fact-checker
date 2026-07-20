@@ -20,7 +20,7 @@ RAG system that checks claims in business reports against public financial and e
 - Compared 2 judge prompts on the full 76-claim set. The simpler prompt wins: 79% accuracy vs. 74%.
 - Tested query rewriting on 4 local LLMs. Found a real pattern: the model with the best retrieval score gave the worst final answers. The model with the worst retrieval score gave the best final answers. Retrieval quality and answer quality are not the same thing — see the doc for why.
 
-**Demo:** in progress (Phase 4). Streamlit UI link lands here once deployed.
+**Demo:** `uv run streamlit run app.py` (or `docker compose up -d ui` → http://localhost:8501). Hosted demo link lands here once deployed (Phase 5).
 
 **Best practices checklist** (per the [course rubric](https://github.com/DataTalksClub/llm-zoomcamp/blob/main/project.md#evaluation-criteria)):
 - [x] Hybrid search (text + vector, fused with RRF) — implemented and evaluated.
@@ -68,15 +68,15 @@ retrieval noise further. See "Further research" in the doc.
 Details: [Phase 3 — Evaluation](docs/phase-3-evaluation.md). Step-by-step
 tutorial: [notebooks/phase3_evaluation.ipynb](notebooks/phase3_evaluation.ipynb).
 
-### Phase 4 — UI + Monitoring ⏳ not started
+### Phase 4 — UI + Monitoring ✅ done
 
 Makes the project usable and observable by someone who isn't reading code.
 
 - **Input:** the working Phase 2/3 pipeline.
-- **What it does:** wraps it in a Streamlit UI (claim input → verdict cards with sources). Logs every query to Langfuse with a 👍/👎 feedback button.
-- **Output:** a live demo, plus a Langfuse dashboard (verdict distribution, latency p95, feedback ratio, cost/query, retrieval hit rate).
+- **What it does:** wraps it in a Streamlit UI (`app.py`) — claim input → verdict cards with sources. Every run (claims, verdicts, token usage, response time) is logged to Postgres (`src/monitoring.py`), with a 👍/👎 feedback button per run. A second page (`pages/1_Monitoring.py`) charts that log: verdict distribution, latency p95, feedback ratio, tokens/query, retrieval hit rate. Same pattern as the course's [05-monitoring](https://github.com/DataTalksClub/llm-zoomcamp/tree/main/05-monitoring) module (`app.py` + `dashboard.py`), adapted to this project's own DB connection and to a native Streamlit multipage app instead of a second script/port.
+- **Output:** a live demo (`docker compose up -d ui` → http://localhost:8501, dashboard in the sidebar). A Langfuse-backed version of the same dashboard is a possible follow-up, not required for submission — the metrics are already real, just Postgres-backed instead of a SaaS dashboard.
 
-Details: TODO — `docs/phase-4-ui-monitoring.md` (not written yet).
+Details: [Phase 4 — UI + Monitoring](docs/phase-4-ui-monitoring.md).
 
 ### Phase 5 — Polish + Submit ⏳ not started
 
@@ -100,8 +100,8 @@ Wraps the project up for review.
 | RAG chain | LangChain | claim extraction (`src/claim_extractor.py`) + verifier (`src/verifier.py`), via OpenRouter free tier (model in `src/config.py`) — $0 LLM cost |
 | Orchestration | Airflow (`dags/fact_checker_dag.py`) | separate `airflow` service (`Dockerfile.airflow`), scheduled daily ingestion so the KB doesn't go stale |
 | Evaluation | RAGAS + LLM-as-judge, done (Phase 3) | hit_rate/MRR per retrieval method, accuracy/faithfulness/context precision per prompt — `eval/compare_retrieval.py`, `eval/ragas_eval.py` |
-| Monitoring | Langfuse (planned, Phase 4) | latency/cost/feedback dashboards |
-| UI | Streamlit (planned, Phase 4) | claim input → verdict cards |
+| Monitoring | Postgres run/feedback log + dashboard (`src/monitoring.py`, `pages/1_Monitoring.py`) | verdict distribution, latency p95, feedback ratio, tokens/query, retrieval hit rate |
+| UI | Streamlit (`app.py` + `pages/`) | claim input → verdict cards with sources, monitoring dashboard in sidebar |
 | API | FastAPI + uvicorn | `src/api.py` — `/health` + `POST /verify` (claim extraction + verdict) |
 | Package/env | [uv](https://docs.astral.sh/uv/) | fast installs, single lockfile |
 | Testing | pytest | `tests/` |
@@ -111,7 +111,7 @@ Wraps the project up for review.
 
 ```bash
 cp .env.example .env        # fill in FRED_API_KEY, OPENROUTER_API_KEY
-docker compose up -d        # postgres+pgvector
+docker compose up -d postgres  # only postgres+pgvector — `up -d` with no service name starts app/ui/airflow too
 uv sync
 uv run python -m ingest.fetch_wikipedia
 uv run python -m ingest.fetch_worldbank
@@ -119,6 +119,7 @@ uv run python -m ingest.fetch_fred        # needs FRED_API_KEY
 uv run python -m ingest.fetch_secedgar
 uv run python -m ingest.build_vector_store
 uv run uvicorn src.api:app --reload
+uv run streamlit run app.py    # UI at http://localhost:8501
 ```
 
 To run ingestion on a schedule instead of manually: `docker compose up -d airflow` (builds `Dockerfile.airflow` on first run), then check `http://localhost:8080` or `docker exec fact-checker-airflow airflow dags list`. The DAG (`fact_checker_daily_ingestion`) re-runs the 4 `ingest.fetch_*` steps + `ingest.build_vector_store` daily.
