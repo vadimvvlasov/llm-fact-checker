@@ -7,7 +7,7 @@ RAG system that checks claims in business reports against public financial and e
 **What it does:**
 - Takes report text as input.
 - Extracts factual claims from the text.
-- Retrieves supporting evidence from a knowledge base (Wikipedia, World Bank, FRED, SEC EDGAR).
+- Retrieves supporting evidence from a knowledge base built from 4 public sources: Wikipedia (definitions/context), World Bank, FRED, and SEC EDGAR (the actual checkable numbers).
 - Returns a verdict per claim: `VERIFIED`, `REFUTED`, or `INSUFFICIENT`.
 - Cites the exact source and quote behind each verdict.
 
@@ -22,12 +22,17 @@ RAG system that checks claims in business reports against public financial and e
 
 **Demo:** `uv run streamlit run app.py` (or `docker compose up -d ui` → http://localhost:8501). Hosted demo link lands here once deployed (Phase 5). No report text handy? The app has a "Try an example" dropdown that fills in a known-good sample — more in [docs/manual-qa-reports.md](docs/manual-qa-reports.md).
 
+<p align="center">
+  <img src="docs/screenshots/ui-verdict-cards.jpg" alt="Streamlit UI showing verdict cards for two claims" width="49%">
+  <img src="docs/screenshots/monitoring-dashboard.jpg" alt="Monitoring dashboard verdict distribution chart" width="49%">
+</p>
+
 **Best practices checklist** (per the [course rubric](https://github.com/DataTalksClub/llm-zoomcamp/blob/main/project.md#evaluation-criteria)):
 - [x] Hybrid search (text + vector, fused with RRF) — implemented and evaluated.
 - [x] Document re-ranking (cross-encoder) — implemented and evaluated.
 - [x] Query rewriting — implemented and evaluated across 4 models. Result: it helps retrieval, but not always the final answer. See [docs/phase-3-evaluation.md](docs/phase-3-evaluation.md).
 
-**Why this stack.** RAG + LLM-as-verifier over structured financial data is the same pattern [Hebbia](https://www.hebbia.com/), [AuditBoard](https://venturebeat.com/ai/auditboard-upgrades-its-risk-management-platform-with-built-in-llm-descriptions), and Thomson Reuters' Westlaw AI use in production today.
+**Why this stack.** RAG + LLM-as-verifier over structured financial data is a pattern used in production fact-checking/audit tools today (e.g. [Hebbia](https://www.hebbia.com/)).
 
 ## Architecture
 
@@ -50,6 +55,14 @@ Turns report text into verified claims, and keeps the knowledge base fresh on a 
 - **Input:** raw report text + the Phase 1 knowledge base.
 - **What it does:** an LLM (LangChain) extracts factual claims from the text. A vector-search RAG chain retrieves supporting evidence per claim. An Airflow DAG (`dags/fact_checker_dag.py`) re-runs ingestion daily so the knowledge base doesn't go stale.
 - **Output:** `POST /verify` endpoint → a verdict per claim — `VERIFIED` / `REFUTED` / `INSUFFICIENT`, with the matched source quote.
+
+```
+POST /verify  { "text": "Apple's revenue for fiscal year ending 2025-09-27 was $416,161,000,000." }
+
+→ { "claims": [{ "claim": "...", "verdict": "VERIFIED",
+      "source": "Apple Inc. (AAPL) — Revenue",
+      "quote": "Apple Inc. (AAPL) reported Revenue of $416,161,000,000 for fiscal year ending 2025-09-27 (10-K filed 2025-10-31)." }] }
+```
 
 Details: [Phase 2 — RAG Pipeline + Orchestration](docs/phase-2-rag-pipeline.md). Walkthrough: [notebooks/phase2_rag_pipeline.ipynb](notebooks/phase2_rag_pipeline.ipynb).
 
@@ -78,12 +91,12 @@ Makes the project usable and observable by someone who isn't reading code.
 
 Details: [Phase 4 — UI + Monitoring](docs/phase-4-ui-monitoring.md).
 
-### Phase 5 — Polish + Submit ⏳ not started
+### Phase 5 — Polish + Submit ⏳ in progress
 
 Wraps the project up for review.
 
 - **Input:** the finished Phase 1-4 system.
-- **What it does:** writes the final README (architecture diagram, setup, examples), records a demo video, smoke-tests `docker compose up` on a clean clone.
+- **What it does:** trims documentation for reviewers, adds screenshots, records a demo video, smoke-tests `docker compose up` on a clean clone.
 - **Output:** submitted capstone project.
 
 ## Tech stack
@@ -132,3 +145,5 @@ To run ingestion on a schedule instead of manually: `docker compose up -d airflo
 - [Phase 2 walkthrough notebook](notebooks/phase2_rag_pipeline.ipynb)
 - [Phase 3 — Evaluation](docs/phase-3-evaluation.md)
 - [Phase 3 tutorial notebook](notebooks/phase3_evaluation.ipynb)
+- [Phase 4 — UI + Monitoring](docs/phase-4-ui-monitoring.md)
+- [Manual QA report examples](docs/manual-qa-reports.md)
