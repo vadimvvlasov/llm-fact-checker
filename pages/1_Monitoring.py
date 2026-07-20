@@ -54,7 +54,7 @@ else:
 st.subheader("4. Tokens per query")
 col1, col2 = st.columns(2)
 col1.metric("avg tokens/run", f"{runs['total_tokens'].mean():.0f}")
-col2.metric("avg tokens/claim", f"{(runs['total_tokens'] / runs['num_claims']).mean():.0f}")
+col2.metric("avg tokens/claim", f"{runs['total_tokens'].sum() / runs['num_claims'].sum():.0f}")
 st.line_chart(runs.set_index("created_at")["total_tokens"])
 
 # 5. Retrieval hit rate (proxy: share of claims that got a non-INSUFFICIENT

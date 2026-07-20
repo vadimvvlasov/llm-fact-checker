@@ -19,7 +19,7 @@ import time
 import streamlit as st
 
 from src.claim_extractor import extract_claims
-from src.llm import USAGE_LOG
+from src.llm import get_usage_log
 from src.monitoring import ensure_schema, save_feedback, save_run
 from src.verifier import verify_claim
 
@@ -45,7 +45,8 @@ if st.button("Verify claims", type="primary"):
         st.warning("Paste some report text first.")
         st.stop()
 
-    usage_start = len(USAGE_LOG)
+    usage_log = get_usage_log()
+    usage_start = len(usage_log)
     start = time.time()
     with st.spinner("Extracting claims and checking evidence..."):
         claims = extract_claims(report_text)
@@ -60,30 +61,49 @@ if st.button("Verify claims", type="primary"):
         report_text,
         list(zip((c.text for c in claims), verdicts)),
         elapsed,
-        USAGE_LOG[usage_start:],
+        usage_log[usage_start:],
     )
+    total_tokens = sum((usage_log[i] or {}).get("total_tokens", 0) for i in range(usage_start, len(usage_log)))
+
+    # Stashed in session_state (not local vars) so the results survive the rerun
+    # triggered by clicking a feedback button below, instead of disappearing.
     st.session_state.run_id = run_id
+    st.session_state.feedback_submitted = False
+    st.session_state.last_result = {
+        "elapsed": elapsed,
+        "total_tokens": total_tokens,
+        "cards": [
+            {"verdict": v.verdict, "claim_text": c.text, "source": v.source, "quote": v.quote}
+            for c, v in zip(claims, verdicts)
+        ],
+    }
 
-    total_tokens = sum((USAGE_LOG[i] or {}).get("total_tokens", 0) for i in range(usage_start, len(USAGE_LOG)))
-    st.caption(f"{len(claims)} claim(s) checked in {elapsed:.1f}s · {total_tokens} tokens")
+if "last_result" in st.session_state:
+    result = st.session_state.last_result
+    st.caption(f"{len(result['cards'])} claim(s) checked in {result['elapsed']:.1f}s · {result['total_tokens']} tokens")
 
-    for claim, verdict in zip(claims, verdicts):
-        icon = VERDICT_ICON[verdict.verdict]
+    for card in result["cards"]:
+        icon = VERDICT_ICON[card["verdict"]]
         with st.container(border=True):
-            st.markdown(f"**{icon} {verdict.verdict}** — {claim.text}")
-            if verdict.source:
-                st.caption(f"Source: {verdict.source}")
-            if verdict.quote:
-                st.markdown(f"> {verdict.quote}")
+            st.markdown(f"**{icon} {card['verdict']}** — {card['claim_text']}")
+            if card["source"]:
+                st.caption(f"Source: {card['source']}")
+            if card["quote"]:
+                st.markdown(f"> {card['quote']}")
 
 if "run_id" in st.session_state:
     st.divider()
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("👍 Useful"):
-            save_feedback(st.session_state.run_id, 1)
-            st.success("Thanks!")
-    with col2:
-        if st.button("👎 Not useful"):
-            save_feedback(st.session_state.run_id, -1)
-            st.success("Thanks for the feedback!")
+    if st.session_state.feedback_submitted:
+        st.caption("Thanks for the feedback!")
+    else:
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("👍 Useful"):
+                save_feedback(st.session_state.run_id, 1)
+                st.session_state.feedback_submitted = True
+                st.rerun()
+        with col2:
+            if st.button("👎 Not useful"):
+                save_feedback(st.session_state.run_id, -1)
+                st.session_state.feedback_submitted = True
+                st.rerun()
