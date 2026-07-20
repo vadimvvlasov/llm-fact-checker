@@ -25,6 +25,37 @@ from src.verifier import verify_claim
 
 VERDICT_ICON = {"VERIFIED": "✅", "REFUTED": "❌", "INSUFFICIENT": "❓"}
 
+# Curated subset of docs/manual-qa-reports.md, picked to sit at ~85-90% retrieval
+# hit rate across sources (SEC EDGAR, World Bank, FRED, Wikipedia) so a reviewer
+# can try the app without hunting for report text that the knowledge base covers.
+EXAMPLE_REPORTS = {
+    "SEC EDGAR — Apple revenue + net income": (
+        "Apple's revenue for fiscal year ending 2025-09-27 was $416,161,000,000. "
+        "Apple's net income for fiscal year ending 2025-09-27 was $112,010,000,000."
+    ),
+    "SEC EDGAR — one true, one false figure": (
+        "Alphabet's revenue for fiscal year ending 2022-12-31 was $282,836,000,000. "
+        "Alphabet's revenue for fiscal year ending 2022-12-31 was $600,000,000,000."
+    ),
+    "World Bank — GDP, true and false": (
+        "US GDP in 2025 was approximately $30.77 trillion. "
+        "US GDP in 2025 was approximately $10 trillion."
+    ),
+    "FRED — unemployment rate, true and false": (
+        "The US unemployment rate was 7.8% in September 2020, reflecting pandemic-era job losses. "
+        "The US unemployment rate was around 8% in October 2018."
+    ),
+    "Wikipedia — financial definitions (one wrong)": (
+        "The debt-to-equity ratio is found by dividing a company's total assets by its "
+        "shareholders' equity. A dividend is a portion of a corporation's profit "
+        "distributed to its shareholders."
+    ),
+    "Known miss — not in the knowledge base": (
+        "Apple's revenue for fiscal year 2010 was $65 billion. "
+        "NVIDIA's net income for fiscal year 2025 was $30 billion."
+    ),
+}
+
 st.set_page_config(page_title="Fact-Checker RAG", page_icon="✅")
 ensure_schema()
 
@@ -34,10 +65,23 @@ st.caption(
     "GDP, inflation). Each claim is checked against the knowledge base."
 )
 
+
+def _load_example():
+    st.session_state.report_text_input = EXAMPLE_REPORTS.get(st.session_state.example_choice, "")
+
+
+st.selectbox(
+    "Try an example (optional — more in docs/manual-qa-reports.md)",
+    options=["— pick an example —", *EXAMPLE_REPORTS],
+    key="example_choice",
+    on_change=_load_example,
+)
+
 report_text = st.text_area(
     "Report text",
     height=200,
     placeholder="Apple's revenue was $391 billion in fiscal year 2024. US GDP grew 2.8% in 2024.",
+    key="report_text_input",
 )
 
 if st.button("Verify claims", type="primary"):

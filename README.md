@@ -20,7 +20,7 @@ RAG system that checks claims in business reports against public financial and e
 - Compared 2 judge prompts on the full 76-claim set. The simpler prompt wins: 79% accuracy vs. 74%.
 - Tested query rewriting on 4 local LLMs. Found a real pattern: the model with the best retrieval score gave the worst final answers. The model with the worst retrieval score gave the best final answers. Retrieval quality and answer quality are not the same thing — see the doc for why.
 
-**Demo:** `uv run streamlit run app.py` (or `docker compose up -d ui` → http://localhost:8501). Hosted demo link lands here once deployed (Phase 5).
+**Demo:** `uv run streamlit run app.py` (or `docker compose up -d ui` → http://localhost:8501). Hosted demo link lands here once deployed (Phase 5). No report text handy? The app has a "Try an example" dropdown that fills in a known-good sample — more in [docs/manual-qa-reports.md](docs/manual-qa-reports.md).
 
 **Best practices checklist** (per the [course rubric](https://github.com/DataTalksClub/llm-zoomcamp/blob/main/project.md#evaluation-criteria)):
 - [x] Hybrid search (text + vector, fused with RRF) — implemented and evaluated.
