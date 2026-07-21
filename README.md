@@ -171,20 +171,67 @@ Wraps the project up for review.
 
 ## Quick start
 
+Both paths need API keys first: `cp .env.example .env`, then fill in
+`FRED_API_KEY` ([free](https://fred.stlouisfed.org/docs/api/api_key.html)) and
+`OPENROUTER_API_KEY` ([free](https://openrouter.ai/settings/keys)). Every
+component reads the same `.env`.
+
+### Option A — Docker (one clean path, recommended for reviewers)
+
 ```bash
-cp .env.example .env        # fill in FRED_API_KEY, OPENROUTER_API_KEY
-docker compose up -d postgres  # only postgres+pgvector — `up -d` with no service name starts app/ui/airflow too
+docker compose up -d postgres                    # DB first (has a healthcheck)
+
+# Populate the knowledge base once (empty until this runs — the app returns
+# INSUFFICIENT for everything otherwise). Runs inside the app image:
+docker compose run --rm app uv run python -m ingest.fetch_wikipedia
+docker compose run --rm app uv run python -m ingest.fetch_worldbank
+docker compose run --rm app uv run python -m ingest.fetch_fred
+docker compose run --rm app uv run python -m ingest.fetch_secedgar
+docker compose run --rm app uv run python -m ingest.build_vector_store
+
+docker compose up -d app ui                      # API → :8000, UI → :8501
+```
+
+Open http://localhost:8501 for the Streamlit app (monitoring dashboard in the
+sidebar). The `app` service serves `POST /verify` at http://localhost:8000.
+
+### Option B — Local (uv)
+
+```bash
+docker compose up -d postgres        # just the DB in Docker
 uv sync
 uv run python -m ingest.fetch_wikipedia
 uv run python -m ingest.fetch_worldbank
-uv run python -m ingest.fetch_fred        # needs FRED_API_KEY
+uv run python -m ingest.fetch_fred
 uv run python -m ingest.fetch_secedgar
 uv run python -m ingest.build_vector_store
-uv run uvicorn src.api:app --reload
-uv run streamlit run app.py    # UI at http://localhost:8501
 ```
 
-To run ingestion on a schedule instead of manually: `docker compose up -d airflow` (builds `Dockerfile.airflow` on first run), then check `http://localhost:8080` or `docker exec fact-checker-airflow airflow dags list`. The DAG (`fact_checker_daily_ingestion`) re-runs the 4 `ingest.fetch_*` steps + `ingest.build_vector_store` daily.
+Then start the API and UI **in two separate terminals** (each blocks its shell):
+
+```bash
+uv run uvicorn src.api:app --reload     # terminal 1 → API at :8000
+uv run streamlit run app.py             # terminal 2 → UI at :8501
+```
+
+### Reproduce the evaluation (Phase 3)
+
+Needs a populated knowledge base (ingestion above) + `data/eval_claims.csv` (in the repo):
+
+```bash
+uv run python eval/compare_retrieval.py   # hit_rate@5 / MRR per retrieval method
+uv run python eval/ragas_eval.py          # accuracy + RAGAS faithfulness / context precision per judge prompt
+```
+
+### Tests
+
+```bash
+uv run pytest
+```
+
+### Scheduled ingestion (optional)
+
+To re-run ingestion on a schedule instead of manually: `docker compose up -d airflow` (builds `Dockerfile.airflow` on first run), then open `http://localhost:8080` (login from `AIRFLOW_ADMIN_*` in `.env`) or `docker exec fact-checker-airflow airflow dags list`. The DAG (`fact_checker_daily_ingestion`) re-runs the 4 `ingest.fetch_*` steps + `ingest.build_vector_store` daily.
 
 ## Docs
 
