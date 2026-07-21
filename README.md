@@ -38,7 +38,7 @@ RAG system that checks claims in business reports against public financial and e
 
 The system is built in 5 phases. Each phase is a separate, independently runnable stage of the RAG pipeline.
 
-### Phase 1 — Data + Ingestion ✅ done
+### Phase 1 — Data + Ingestion
 
 Builds the knowledge base. The foundation for every later phase.
 
@@ -48,7 +48,7 @@ Builds the knowledge base. The foundation for every later phase.
 
 Details: [Phase 1 — Ingestion](docs/phase-1-ingestion.md). Step-by-step tutorial: [notebooks/phase1_ingestion.ipynb](notebooks/phase1_ingestion.ipynb).
 
-### Phase 2 — RAG Pipeline + Orchestration ✅ done
+### Phase 2 — RAG Pipeline + Orchestration
 
 Turns report text into verified claims, and keeps the knowledge base fresh on a schedule.
 
@@ -66,7 +66,7 @@ POST /verify  { "text": "Apple's revenue for fiscal year ending 2025-09-27 was $
 
 Details: [Phase 2 — RAG Pipeline + Orchestration](docs/phase-2-rag-pipeline.md). Walkthrough: [notebooks/phase2_rag_pipeline.ipynb](notebooks/phase2_rag_pipeline.ipynb).
 
-### Phase 3 — Hybrid Search + Evaluation ✅ done
+### Phase 3 — Hybrid Search + Evaluation
 
 Makes retrieval better. Measures how much better, with real numbers, not guesses.
 
@@ -81,7 +81,7 @@ retrieval noise further. See "Further research" in the doc.
 Details: [Phase 3 — Evaluation](docs/phase-3-evaluation.md). Step-by-step
 tutorial: [notebooks/phase3_evaluation.ipynb](notebooks/phase3_evaluation.ipynb).
 
-### Phase 4 — UI + Monitoring ✅ done
+### Phase 4 — UI + Monitoring
 
 Makes the project usable and observable by someone who isn't reading code.
 
@@ -91,7 +91,7 @@ Makes the project usable and observable by someone who isn't reading code.
 
 Details: [Phase 4 — UI + Monitoring](docs/phase-4-ui-monitoring.md).
 
-### Phase 5 — Polish + Submit ⏳ in progress
+### Phase 5 — Polish + Submit
 
 Wraps the project up for review.
 
