@@ -190,6 +190,15 @@ docker compose run --rm app uv run python -m ingest.build_vector_store
 docker compose up -d app ui                      # API → :8000, UI → :8501
 ```
 
+Verify the knowledge base actually populated (all 4 sources, thousands of chunks —
+if this is empty or missing a source, the app will return `INSUFFICIENT` for
+everything):
+
+```bash
+docker exec fact-checker-db psql -U factchecker -d factchecker -c "SELECT source, count(*) FROM documents GROUP BY source;"
+docker exec fact-checker-db psql -U factchecker -d factchecker -c "SELECT count(*) FROM document_chunks;"
+```
+
 Verify it's up:
 
 ```bash
@@ -219,9 +228,16 @@ uv run uvicorn src.api:app --reload     # terminal 1 → API at :8000
 uv run streamlit run app.py             # terminal 2 → UI at :8501
 ```
 
+Verify the knowledge base populated (same check as Option A above, `postgres` is the
+same container either way):
+
+```bash
+docker exec fact-checker-db psql -U factchecker -d factchecker -c "SELECT source, count(*) FROM documents GROUP BY source;"
+```
+
 Verify it's up: `curl http://localhost:8000/health` → `{"status": "ok"}`
 
-### Reproduce the evaluation
+### Reproduce the evaluation (many LLM calls — see note below on free-tier vs. ollama)
 
 Needs a populated knowledge base (ingestion above) + `data/eval_claims.csv` (in the repo):
 
@@ -230,19 +246,16 @@ uv run python eval/compare_retrieval.py   # hit_rate@5 / MRR per retrieval metho
 uv run python eval/ragas_eval.py          # accuracy + RAGAS faithfulness / context precision per judge prompt
 ```
 
-Both make real calls to the configured LLM provider (`rewrite_query()` for the
-query-rewriting retrieval method, `verify_claim()` for the judge prompts). On the
-default free-tier OpenRouter model this can be slow and occasionally hit a transient
-`429` (auto-retried) — expected on a shared free tier, not a bug. `ragas_eval.py`
-samples 10 claims by default for this reason; pass `sample_size=None` in `main()` for
-the full 76-claim set.
-
-Want to run the full set without free-tier waits? Switch provider in `.env` —
-`LLM_PROVIDER=ollama` (fully local, no rate limit, needs `ollama pull granite4.1:3b`
-first) — already wired in `src/config.py`, no code changes needed. The numbers
-documented in
-[docs/phase-3-evaluation.md](docs/phase-3-evaluation.md) were measured on the default
-model; a different provider may score slightly differently.
+- Both make real LLM calls (`rewrite_query()`, `verify_claim()`) — slow and prone to
+  transient `429`s on the default free-tier OpenRouter model (auto-retried, expected
+  on a shared free tier, not a bug).
+- `ragas_eval.py` samples 10 claims by default for this reason; pass
+  `sample_size=None` in `main()` for the full 76-claim set.
+- To avoid the wait: set `LLM_PROVIDER=ollama` in `.env` (fully local, no rate limit,
+  `ollama pull granite4.1:3b` first) — already wired in `src/config.py`, no code
+  changes needed. Numbers in
+  [docs/phase-3-evaluation.md](docs/phase-3-evaluation.md) were measured on the
+  default model; another provider may score slightly differently.
 
 ### Tests
 
@@ -264,6 +277,18 @@ Open http://localhost:8080 (login from `AIRFLOW_ADMIN_*` in `.env`) and unpause 
 docker exec fact-checker-airflow airflow dags list                              # confirm it loaded
 docker exec fact-checker-airflow airflow dags unpause fact_checker_daily_ingestion
 docker exec fact-checker-airflow airflow dags trigger fact_checker_daily_ingestion
+```
+
+**Troubleshooting: `:8080` not reachable after `docker compose up -d airflow`.** Check
+`docker logs fact-checker-airflow` for `Error: Already running on PID ... (or pid file
+'/opt/airflow/airflow-webserver.pid' is stale)`. The `airflow_home` volume persists
+across restarts — if the webserver didn't shut down cleanly last time, its stale PID
+file blocks the next start (scheduler/triggerer come up fine, only the webserver
+fails). Fix:
+
+```bash
+docker exec fact-checker-airflow rm -f /opt/airflow/airflow-webserver.pid
+docker compose restart airflow
 ```
 
 The DAG re-runs the 4 `ingest.fetch_*` steps + `ingest.build_vector_store` daily — the same steps as the manual ingestion above, just scheduled.
