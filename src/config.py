@@ -25,7 +25,9 @@ LLM_PROVIDERS = {
         "api_key": os.getenv("OPENROUTER_API_KEY", ""),
         "default_model": "poolside/laguna-xs-2.1:free",
         "timeout": 30,
-        "max_retries": 1,
+        # free-tier model is rate-limited upstream fairly often (openai.RateLimitError,
+        # 429) — retry a few times instead of failing the whole request on the first hit.
+        "max_retries": 5,
     },
     "groq": {
         "base_url": "https://api.groq.com/openai/v1",
