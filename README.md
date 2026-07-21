@@ -154,10 +154,25 @@ Two datasets, both in the repo — no external download needed.
 
 ## Quick start
 
-Both paths need API keys first: `cp .env.example .env`, then fill in
-`FRED_API_KEY` ([free](https://fred.stlouisfed.org/docs/api/api_key.html)) and
-`OPENROUTER_API_KEY` ([free](https://openrouter.ai/settings/keys)). Every
-component reads the same `.env`.
+**Prerequisites:**
+- Docker + Docker Compose
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) — only for Option B or the eval/test commands below; Option A runs everything in containers.
+  ```bash
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  ```
+
+**API keys** — both options read the same `.env`, every service picks it up via `env_file`:
+
+```bash
+cp .env.example .env
+```
+
+Fill in 2 values, both free:
+- `FRED_API_KEY` — register at [fredaccount.stlouisfed.org](https://fred.stlouisfed.org/docs/api/api_key.html), key issued instantly.
+- `OPENROUTER_API_KEY` — grab one at [openrouter.ai/settings/keys](https://openrouter.ai/settings/keys).
+
+Everything else in `.env.example` (Postgres credentials, Airflow admin login) already has a working default — leave as is unless you want to change them.
 
 ### Option A — Docker (one clean path, recommended for reviewers)
 
@@ -175,8 +190,15 @@ docker compose run --rm app uv run python -m ingest.build_vector_store
 docker compose up -d app ui                      # API → :8000, UI → :8501
 ```
 
+Verify it's up:
+
+```bash
+curl http://localhost:8000/health   # → {"status": "ok"}
+```
+
 Open http://localhost:8501 for the Streamlit app (monitoring dashboard in the
-sidebar). The `app` service serves `POST /verify` at http://localhost:8000.
+sidebar). The `app` service serves `POST /verify` at http://localhost:8000 — see
+the example request/response in [Architecture](#architecture).
 
 ### Option B — Local (uv)
 
@@ -196,6 +218,8 @@ Then start the API and UI **in two separate terminals** (each blocks its shell):
 uv run uvicorn src.api:app --reload     # terminal 1 → API at :8000
 uv run streamlit run app.py             # terminal 2 → UI at :8501
 ```
+
+Verify it's up: `curl http://localhost:8000/health` → `{"status": "ok"}`
 
 ### Reproduce the evaluation
 
