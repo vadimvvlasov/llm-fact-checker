@@ -230,6 +230,20 @@ uv run python eval/compare_retrieval.py   # hit_rate@5 / MRR per retrieval metho
 uv run python eval/ragas_eval.py          # accuracy + RAGAS faithfulness / context precision per judge prompt
 ```
 
+Both make real calls to the configured LLM provider (`rewrite_query()` for the
+query-rewriting retrieval method, `verify_claim()` for the judge prompts). On the
+default free-tier OpenRouter model this can be slow and occasionally hit a transient
+`429` (auto-retried) — expected on a shared free tier, not a bug. `ragas_eval.py`
+samples 10 claims by default for this reason; pass `sample_size=None` in `main()` for
+the full 76-claim set.
+
+Want to run the full set without free-tier waits? Switch provider in `.env` —
+`LLM_PROVIDER=ollama` (fully local, no rate limit, needs `ollama pull granite4.1:3b`
+first) — already wired in `src/config.py`, no code changes needed. The numbers
+documented in
+[docs/phase-3-evaluation.md](docs/phase-3-evaluation.md) were measured on the default
+model; a different provider may score slightly differently.
+
 ### Tests
 
 ```bash
