@@ -1,4 +1,4 @@
-"""Streamlit UI (Phase 4) — claim input -> verdict cards with sources.
+"""Streamlit UI — claim input -> verdict cards with sources.
 
 Structure follows the LLM Zoomcamp course's monitoring module
 (05-monitoring/code/app.py): text input -> spinner -> answer -> response

@@ -1,4 +1,4 @@
-"""Monitoring dashboard (Phase 4) — 5 charts over logged verification runs.
+"""Monitoring dashboard — 5 charts over logged verification runs.
 
 Mirrors the course's dashboard.py (05-monitoring/code/dashboard.py) role: a
 separate page that reads what app.py wrote to Postgres and charts it, instead

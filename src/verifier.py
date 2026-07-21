@@ -1,8 +1,8 @@
 """LLM-as-judge: claim + retrieved evidence -> VERIFIED / REFUTED / INSUFFICIENT + citation.
 
-`VERDICT_PROMPT_V1` is passed explicitly (not hardcoded) so Phase 3 can run a second
-prompt variant against the same claims and compare accuracy — see the "LLM evaluation,
-2 prompts" line in the capstone rubric.
+`VERDICT_PROMPT_V1` is passed explicitly (not hardcoded) so the evaluation script can
+run a second prompt variant against the same claims and compare accuracy — see the
+"LLM evaluation, 2 prompts" line in the capstone rubric.
 """
 
 from typing import Literal

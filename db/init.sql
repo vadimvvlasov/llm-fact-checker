@@ -3,7 +3,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
-    source TEXT NOT NULL,          -- wikipedia | worldbank | fred
+    source TEXT NOT NULL,          -- wikipedia | worldbank | fred | secedgar
     doc_type TEXT,                 -- article | indicator_series
     url TEXT,
     created_at TIMESTAMPTZ DEFAULT now()

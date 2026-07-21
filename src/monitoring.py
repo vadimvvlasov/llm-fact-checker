@@ -1,4 +1,4 @@
-"""Persistence for the Streamlit UI (Phase 4): verification runs + user feedback.
+"""Persistence for the Streamlit UI: verification runs + user feedback.
 
 Schema mirrors the LLM Zoomcamp course's monitoring module (05-monitoring/code/db_init.py,
 db_save.py, db_feedback.py) — conversations/feedback tables, +1/-1 buttons — adapted to
@@ -6,7 +6,7 @@ this project's own connection helper (src/db.py's get_conn, psycopg2) instead of
 course's standalone psycopg3 connection, so there's one place that owns Postgres connections.
 
 `ensure_schema()` uses CREATE TABLE IF NOT EXISTS and is safe to call on every app start,
-including against an existing Phase 1-3 database — it does not touch db/init.sql (which
+including against an existing populated database — it does not touch db/init.sql (which
 only runs on a fresh container volume and would require dropping already-ingested data).
 """
 

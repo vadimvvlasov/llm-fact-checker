@@ -8,7 +8,6 @@ dependencies = [
     "psycopg2-binary>=2.9.12",
     "pgvector>=0.3.6",
     "sentence-transformers>=5.5.0",
-    "wikipedia>=1.4.0",
     "requests>=2.32.0",
     "python-dotenv>=1.2.2",
     "fastapi>=0.115.0",
