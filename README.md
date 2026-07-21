@@ -36,7 +36,7 @@ RAG system that checks claims in business reports against public financial and e
 | Ingestion pipeline | ✅ automated — dlt + Airflow DAG | [Architecture → ingestion](#architecture) |
 | Monitoring | ✅ user feedback + 5-chart dashboard | [Architecture → fact-checking app](#architecture) |
 | Containerization | ✅ full stack in docker-compose | [Quick start](#quick-start) |
-| Reproducibility | ✅ one-command paths, dataset in repo | [Quick start](#quick-start) |
+| Reproducibility | ✅ one-command paths, dataset in repo | [Quick start](#quick-start), [Dataset](#dataset) |
 | Best practices (hybrid search, re-ranking, query rewriting) | ✅ all 3, all evaluated | [Best practices](#best-practices) |
 
 ## Architecture
@@ -143,6 +143,14 @@ Per the [course rubric](https://github.com/DataTalksClub/llm-zoomcamp/blob/main/
 | Package/env | [uv](https://docs.astral.sh/uv/) | fast installs, single lockfile |
 | Testing | pytest | `tests/` |
 | Infra | Docker Compose | one command to bring up Postgres+pgvector |
+
+## Dataset
+
+Two datasets, both in the repo — no external download needed.
+
+**Knowledge base** — built from 4 public APIs, not synthetic: Wikipedia (definitions), World Bank + FRED (economic indicators), SEC EDGAR (company financials, the actual checkable numbers). Fetched by `ingest/fetch_*.py`, see [Architecture](#architecture).
+
+**Evaluation set** — [`data/eval_claims.csv`](data/eval_claims.csv), 76 hand-labeled claims (`id, claim, expected_verdict, source_hint`). Covers all 4 sources plus deliberate knowledge-base misses (e.g. tickers/series not ingested) to exercise the `INSUFFICIENT` path, not just the happy path.
 
 ## Quick start
 
