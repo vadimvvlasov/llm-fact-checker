@@ -36,7 +36,56 @@ RAG system that checks claims in business reports against public financial and e
 
 ## Architecture
 
-The system is built in 5 phases. Each phase is a separate, independently runnable stage of the RAG pipeline.
+Three independent processes share one Postgres database. **Knowledge-base ingestion** (Airflow, scheduled) writes the knowledge base; the **fact-checking app** (Streamlit, on demand) reads it to check claims; **evaluation** (offline, dev-time) reads it to measure retrieval and judge quality. Nothing runs the other two — the database is the only coupling.
+
+```mermaid
+flowchart TB
+    ING["🔄 Knowledge-base ingestion — Airflow<br/>scheduled · writes"]
+    VER["✅ Fact-checking app — Streamlit UI + monitoring<br/>on demand · reads"]
+    EVAL["📊 Retrieval &amp; judge evaluation<br/>offline dev-time · reads"]
+    DB[("Postgres + pgvector<br/>knowledge base + monitoring log")]
+
+    ING -->|write chunks| DB
+    DB -->|retrieve| VER
+    DB -->|retrieve| EVAL
+```
+
+The three processes in detail:
+
+**Knowledge-base ingestion** — builds the searchable knowledge base. Airflow DAG `dags/fact_checker_dag.py`, runs daily.
+
+```mermaid
+flowchart TB
+    API["4 public APIs — Wikipedia · World Bank · FRED · SEC EDGAR"] -->|dlt| RAW["Postgres raw tables"]
+    RAW --> CHUNK["chunk long text + numeric facts → sentences"]
+    CHUNK --> EMB["embed (all-MiniLM-L6-v2)"]
+    EMB --> KB[("document_chunks + pgvector index")]
+```
+
+**Fact-checking app** — the runtime that turns report text into verdicts, plus its monitoring dashboard. Streamlit `app.py`, on demand.
+
+```mermaid
+flowchart TB
+    TXT["report text"] --> EX["extract_claims (LLM)"]
+    EX --> HS["hybrid search — pgvector + full-text, RRF"]
+    KB[("document_chunks")] -.->|retrieve| HS
+    HS --> RR["cross-encoder rerank top-5"]
+    RR --> JUDGE["LLM judge (VERDICT_PROMPT_V1)"]
+    JUDGE --> V["verdict per claim — VERIFIED / REFUTED / INSUFFICIENT + source quote"]
+    V --> LOG[("verification_runs + 👍/👎 feedback")]
+    LOG --> DASH["monitoring dashboard (pages/1_Monitoring.py)"]
+```
+
+**Retrieval & judge evaluation** — offline measurement, not part of the runtime. Scores retrieval and judge variants against a labeled set.
+
+```mermaid
+flowchart TB
+    SET["data/eval_claims.csv — 76 labeled claims"] --> RUN["run retrieval + judge variants"]
+    KB[("document_chunks")] -.->|retrieve| RUN
+    RUN --> M["metrics — hit_rate@5 · MRR · RAGAS (faithfulness, context precision) · accuracy"]
+```
+
+Each phase is a separate, independently runnable stage of the RAG pipeline.
 
 ### Phase 1 — Data + Ingestion
 
