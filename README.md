@@ -15,6 +15,10 @@ RAG system that checks claims in business reports against public financial and e
 
 **Who it's for:** analysts, auditors, and researchers who verify quantitative claims in reports and don't want to check every number by hand.
 
+**Demo video:**
+
+[![Demo video](https://img.youtube.com/vi/oPwMSw2VfWI/maxresdefault.jpg)](https://youtu.be/oPwMSw2VfWI)
+
 **Demo:** see [Quick start](#quick-start) below. No report text handy? The app has a "Try an example" dropdown that fills in a known-good sample — more in [docs/manual-qa-reports.md](docs/manual-qa-reports.md).
 
 <p align="center">
