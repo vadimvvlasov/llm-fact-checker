@@ -181,14 +181,17 @@ docker compose up -d postgres                    # DB first (has a healthcheck)
 
 # Populate the knowledge base once (empty until this runs — the app returns
 # INSUFFICIENT for everything otherwise). Runs inside the app image:
-docker compose run --rm app uv run python -m ingest.fetch_wikipedia
-docker compose run --rm app uv run python -m ingest.fetch_worldbank
-docker compose run --rm app uv run python -m ingest.fetch_fred
-docker compose run --rm app uv run python -m ingest.fetch_secedgar
-docker compose run --rm app uv run python -m ingest.build_vector_store
+docker compose run --rm app uv run --frozen --no-dev python -m ingest.fetch_wikipedia
+docker compose run --rm app uv run --frozen --no-dev python -m ingest.fetch_worldbank
+docker compose run --rm app uv run --frozen --no-dev python -m ingest.fetch_fred
+docker compose run --rm app uv run --frozen --no-dev python -m ingest.fetch_secedgar
+docker compose run --rm app uv run --frozen --no-dev python -m ingest.build_vector_store
 
-docker compose up -d app ui                      # API → :8000, UI → :8501
+docker compose up -d --build app ui              # API → :8000, UI → :8501
 ```
+
+`--build` avoids a stale `ui` image on repeat runs against an existing
+checkout (fresh clones aren't affected — there's no cached image yet).
 
 Verify the knowledge base actually populated (all 4 sources, thousands of chunks —
 if this is empty or missing a source, the app will return `INSUFFICIENT` for
