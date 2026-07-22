@@ -90,10 +90,16 @@ flowchart TB
     LOG --> DASH["monitoring dashboard (pages/1_Monitoring.py)"]
 ```
 
-```
-POST /verify  { "text": "Apple's revenue for fiscal year ending 2025-09-27 was $416,161,000,000." }
+Runnable once `app` is up (Quick start below):
 
-→ { "claims": [{ "claim": "...", "verdict": "VERIFIED",
+```bash
+curl -s -X POST http://localhost:8000/verify \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Apple'"'"'s revenue for fiscal year ending 2025-09-27 was $416,161,000,000."}'
+```
+
+```json
+{ "claims": [{ "claim": "...", "verdict": "VERIFIED",
       "source": "Apple Inc. (AAPL) — Revenue",
       "quote": "Apple Inc. (AAPL) reported Revenue of $416,161,000,000 for fiscal year ending 2025-09-27 (10-K filed 2025-10-31)." }] }
 ```
