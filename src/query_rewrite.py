@@ -7,9 +7,13 @@ hybrid search picks the wrong one. Rewriting adds a source-type disambiguator so
 retrieval has more to match against than the bare claim text.
 """
 
+import logging
+
 from pydantic import BaseModel, Field
 
 from src.llm import invoke_structured
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You rewrite a factual claim into a search query for a hybrid
 (keyword + vector) search over a knowledge base with four source types:
@@ -38,5 +42,13 @@ class RewrittenQuery(BaseModel):
 
 
 def rewrite_query(claim_text: str) -> str:
-    result = invoke_structured(RewrittenQuery, [("system", SYSTEM_PROMPT), ("user", claim_text)])
-    return result.query
+    """Best-effort: falls back to the raw claim text if the rewrite call fails
+    (e.g. a flaky free-tier LLM returning a malformed response) rather than
+    failing the whole verification — retrieval on the unrewritten claim still works,
+    just without the source-type disambiguation this adds."""
+    try:
+        result = invoke_structured(RewrittenQuery, [("system", SYSTEM_PROMPT), ("user", claim_text)])
+        return result.query
+    except Exception:
+        logger.warning("rewrite_query failed, falling back to raw claim text", exc_info=True)
+        return claim_text
