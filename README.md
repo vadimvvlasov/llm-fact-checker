@@ -94,19 +94,7 @@ flowchart TB
     LOG --> DASH["monitoring dashboard (pages/1_Monitoring.py)"]
 ```
 
-Runnable once `app` is up (Quick start below):
-
-```bash
-curl -s -X POST http://localhost:8000/verify \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Apple'"'"'s revenue for fiscal year ending 2025-09-27 was $416,161,000,000."}'
-```
-
-```json
-{ "claims": [{ "claim": "...", "verdict": "VERIFIED",
-      "source": "Apple Inc. (AAPL) — Revenue",
-      "quote": "Apple Inc. (AAPL) reported Revenue of $416,161,000,000 for fiscal year ending 2025-09-27 (10-K filed 2025-10-31)." }] }
-```
+Runnable example: [Quick start](#quick-start).
 
 Details: [docs/phase-2-rag-pipeline.md](docs/phase-2-rag-pipeline.md) (RAG flow), [docs/phase-4-ui-monitoring.md](docs/phase-4-ui-monitoring.md) (UI + monitoring). Walkthrough notebook: [notebooks/phase2_rag_pipeline.ipynb](notebooks/phase2_rag_pipeline.ipynb).
 
@@ -219,8 +207,19 @@ curl http://localhost:8000/health   # → {"status": "ok"}
 ```
 
 Open http://localhost:8501 for the Streamlit app (monitoring dashboard in the
-sidebar). The `app` service serves `POST /verify` at http://localhost:8000 — see
-the example request/response in [Architecture](#architecture).
+sidebar). The `app` service also serves `POST /verify` at http://localhost:8000 directly:
+
+```bash
+curl -s -X POST http://localhost:8000/verify \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Apple'"'"'s revenue for fiscal year ending 2025-09-27 was $416,161,000,000."}'
+```
+
+```json
+{ "claims": [{ "claim": "...", "verdict": "VERIFIED",
+      "source": "Apple Inc. (AAPL) — Revenue",
+      "quote": "Apple Inc. (AAPL) reported Revenue of $416,161,000,000 for fiscal year ending 2025-09-27 (10-K filed 2025-10-31)." }] }
+```
 
 ### Option B — Local (uv)
 
